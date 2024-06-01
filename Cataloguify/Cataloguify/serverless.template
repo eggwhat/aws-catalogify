@@ -39,10 +39,7 @@
     "CataloguifyFunctionsGenerateTokenAsyncGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations",
-        "SyncedEvents": [
-          "RootPost"
-        ]
+        "Tool": "Amazon.Lambda.Annotations"
       },
       "Properties": {
         "Runtime": "dotnet8",
@@ -54,15 +51,24 @@
         ],
         "PackageType": "Zip",
         "Handler": "Cataloguify::Cataloguify.Functions_GenerateTokenAsync_Generated::GenerateTokenAsync",
-        "Events": {
-          "RootPost": {
-            "Type": "Api",
-            "Properties": {
-              "Path": "/generate-token",
-              "Method": "POST"
-            }
-          }
-        }
+        "Events": {}
+      }
+    },
+    "CataloguifyFunctionsValidateTokenAsyncGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "Runtime": "dotnet8",
+        "CodeUri": ".",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Zip",
+        "Handler": "Cataloguify::Cataloguify.Functions_ValidateTokenAsync_Generated::ValidateTokenAsync"
       }
     }
   },
