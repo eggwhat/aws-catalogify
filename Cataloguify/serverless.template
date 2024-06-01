@@ -8,6 +8,9 @@
     "AspNetCoreFunction": {
       "Type": "AWS::Serverless::Function",
       "Properties": {
+        "Architectures": [
+            "x86_64"
+            ],
         "Handler": "Cataloguify::Cataloguify.LambdaEntryPoint::FunctionHandlerAsync",
         "Runtime": "dotnet8",
         "CodeUri": "",
@@ -17,6 +20,10 @@
         "Policies": [
           "AWSLambda_FullAccess"
         ],
+        "Environment": {
+            "Variables": {
+               }
+            },
         "Events": {
           "ProxyResource": {
             "Type": "Api",
