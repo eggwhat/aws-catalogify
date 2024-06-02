@@ -51,7 +51,7 @@ public class Functions
         return HttpResults.Ok("Hello AWS Serverless");
     }
 
-    private const string key = "S0M3RAN0MS3CR3T!1!MAG1C!1!";
+    private const string key = "eiquief5phee9pazo0Faegaez9gohThailiur5woy2befiech1oarai4aiLi6ahVecah3ie9Aiz6Peij";
 
     [LambdaFunction]
     [RestApi(LambdaHttpMethod.Post, "/")]

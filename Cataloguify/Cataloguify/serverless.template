@@ -93,13 +93,13 @@
         "TableName": "users",
         "AttributeDefinitions": [
           {
-            "AttributeName": "Email",
+            "AttributeName": "email",
             "AttributeType": "S"
           }
         ],
         "KeySchema": [
           {
-            "AttributeName": "Email",
+            "AttributeName": "email",
             "KeyType": "HASH"
           }
         ],
