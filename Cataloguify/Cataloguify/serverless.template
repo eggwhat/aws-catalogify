@@ -90,7 +90,7 @@
     "UserTable": {
       "Type": "AWS::DynamoDB::Table",
       "Properties": {
-        "TableName": "User",
+        "TableName": "users",
         "AttributeDefinitions": [
           {
             "AttributeName": "Email",
