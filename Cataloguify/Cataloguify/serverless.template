@@ -85,24 +85,6 @@
         "Handler": "Cataloguify::Cataloguify.Functions_ValidateTokenAsync_Generated::ValidateTokenAsync"
       }
     },
-    "LambdaAuthorizer": {
-      "Type": "AWS::Serverless::Function",
-      "Properties": {
-        "Architectures": [
-          "x86_64"
-        ],
-        "Handler": "Cataloguify::Cataloguify.Authorizer::FunctionHandler",
-        "Runtime": "dotnet8",
-        "CodeUri": ".",
-        "Role": "arn:aws:iam::885422015476:role/LabRole",
-        "MemorySize": 256,
-        "Timeout": 30,
-        "Policies": [
-          "LabRole"
-        ],
-        "PackageType": "Zip"
-      }
-    },
     "UserTable": {
       "Type": "AWS::DynamoDB::Table",
       "Properties": {
