@@ -11,6 +11,12 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Newtonsoft.Json;
+using Amazon.DynamoDBv2.Model;
+using static System.Net.Mime.MediaTypeNames;
+using Amazon.S3;
+using Amazon.Rekognition;
+using Amazon.Rekognition.Model;
+using Amazon.Runtime;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -19,11 +25,47 @@ namespace Cataloguify;
 
 public class Functions
 {
+    public const float DEFAULT_MIN_CONFIDENCE = 70f;
+
+    /// <summary>
+    /// The name of the environment variable to set which will override the default minimum confidence level.
+    /// </summary>
+    public const string MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME = "MinConfidence";
+
+    IAmazonS3 S3Client { get; }
+
+    IAmazonRekognition RekognitionClient { get; }
+
+    float MinConfidence { get; set; } = DEFAULT_MIN_CONFIDENCE;
+
+    HashSet<string> SupportedImageTypes { get; } = new HashSet<string> { ".png", ".jpg", ".jpeg" };
+
     /// <summary>
     /// Default constructor that Lambda will invoke.
     /// </summary>
     public Functions()
     {
+        this.S3Client = new AmazonS3Client();
+        this.RekognitionClient = new AmazonRekognitionClient();
+
+        var environmentMinConfidence = System.Environment.GetEnvironmentVariable(MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME);
+        if (!string.IsNullOrWhiteSpace(environmentMinConfidence))
+        {
+            float value;
+            if (float.TryParse(environmentMinConfidence, out value))
+            {
+                this.MinConfidence = value;
+                Console.WriteLine($"Setting minimum confidence to {this.MinConfidence}");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to parse value {environmentMinConfidence} for minimum confidence. Reverting back to default of {this.MinConfidence}");
+            }
+        }
+        else
+        {
+            Console.WriteLine($"Using default minimum confidence of {this.MinConfidence}");
+        }
     }
 
 
@@ -54,7 +96,7 @@ public class Functions
     private const string key = "eiquief5phee9pazo0Faegaez9gohThailiur5woy2befiech1oarai4aiLi6ahVecah3ie9Aiz6Peij";
 
     [LambdaFunction]
-    [RestApi(LambdaHttpMethod.Post, "/")]
+    [RestApi(LambdaHttpMethod.Post, "/generate-token")]
     public async Task<string> GenerateTokenAsync(APIGatewayProxyRequest request, ILambdaContext context)
     {
         var tokenRequest = JsonConvert.DeserializeObject<User>(request.Body);
@@ -121,6 +163,52 @@ public class Functions
         catch (Exception ex)
         {
             return null;
+        }
+    }
+
+    [LambdaFunction]
+    [RestApi(LambdaHttpMethod.Post, "/upload-image")]
+    public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayProxyRequest request, ILambdaContext context)
+    {
+        try
+        {
+            var imageBase64 = request.Headers["Image"]; // Get image from header
+            byte[] imageBytes = Convert.FromBase64String(imageBase64);
+
+
+            // Detect faces in the image
+            DetectFacesRequest detectFacesRequest = new DetectFacesRequest
+            {
+                Image = new Amazon.Rekognition.Model.Image { Bytes = new MemoryStream(imageBytes) }
+            };
+
+            DetectFacesResponse detectFacesResponse = await RekognitionClient.DetectFacesAsync(detectFacesRequest);
+
+            // Process the response
+            StringBuilder responseBuilder = new StringBuilder();
+            foreach (FaceDetail faceDetail in detectFacesResponse.FaceDetails)
+            {
+                responseBuilder.AppendLine($"Detected face with confidence: {faceDetail.Confidence}");
+            }
+
+            // Return response
+            return new APIGatewayProxyResponse
+            {
+                StatusCode = 200,
+                Body = responseBuilder.ToString(),
+                Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" } }
+            };
+        }
+        catch (Exception ex)
+        {
+            // Handle any errors
+            LambdaLogger.Log($"Error processing image: {ex.Message}");
+            return new APIGatewayProxyResponse
+            {
+                StatusCode = 500,
+                Body = "Error processing image",
+                Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" } }
+            };
         }
     }
 }

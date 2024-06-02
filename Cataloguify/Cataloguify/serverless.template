@@ -62,7 +62,7 @@
           "RootPost": {
             "Type": "Api",
             "Properties": {
-              "Path": "/",
+              "Path": "/generate-token",
               "Method": "POST"
             }
           }
@@ -106,6 +106,35 @@
         "ProvisionedThroughput": {
           "ReadCapacityUnits": 5,
           "WriteCapacityUnits": 5
+        }
+      }
+    },
+    "CataloguifyFunctionsFunctionHandlerGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations",
+        "SyncedEvents": [
+          "RootPost"
+        ]
+      },
+      "Properties": {
+        "Runtime": "dotnet8",
+        "CodeUri": ".",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Zip",
+        "Handler": "Cataloguify::Cataloguify.Functions_FunctionHandler_Generated::FunctionHandler",
+        "Events": {
+          "RootPost": {
+            "Type": "Api",
+            "Properties": {
+              "Path": "/upload-image",
+              "Method": "POST"
+            }
+          }
         }
       }
     }
