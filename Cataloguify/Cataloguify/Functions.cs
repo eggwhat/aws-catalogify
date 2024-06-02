@@ -55,7 +55,7 @@ public class Functions
 
     [LambdaFunction]
     [RestApi(LambdaHttpMethod.Post, "/")]
-    public async Task<string> GenerateTokenAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
+    public async Task<string> GenerateTokenAsync(APIGatewayProxyRequest request, ILambdaContext context)
     {
         var tokenRequest = JsonConvert.DeserializeObject<User>(request.Body);
         AmazonDynamoDBClient client = new AmazonDynamoDBClient();
@@ -96,7 +96,7 @@ public class Functions
                 new APIGatewayCustomAuthorizerPolicy.IAMPolicyStatement()
                 {
                     Effect = effect,
-                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:sctmtm1ge8/*/*" },
+                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:fu93dxbdj3/*/*" },
                     Action = new HashSet<string> { "execute-api:Invoke" }
                 }
             }

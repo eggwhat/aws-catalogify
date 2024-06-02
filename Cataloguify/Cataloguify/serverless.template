@@ -46,10 +46,11 @@
       },
       "Properties": {
         "Architectures": [
-              "x86_64"
+          "x86_64"
         ],
         "Runtime": "dotnet8",
         "CodeUri": ".",
+        "Role": "arn:aws:iam::885422015476:role/LabRole",
         "MemorySize": 256,
         "Timeout": 30,
         "Policies": [
@@ -61,7 +62,7 @@
           "RootPost": {
             "Type": "Api",
             "Properties": {
-              "Path": "/generate-token",
+              "Path": "/",
               "Method": "POST"
             }
           }
@@ -76,6 +77,7 @@
       "Properties": {
         "Runtime": "dotnet8",
         "CodeUri": ".",
+        "Role": "arn:aws:iam::885422015476:role/LabRole",
         "MemorySize": 256,
         "Timeout": 30,
         "Policies": [
