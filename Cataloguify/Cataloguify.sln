@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cataloguify", "Cataloguify\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cataloguify.Tests", "Cataloguify.Tests\Cataloguify.Tests.csproj", "{4A3506B9-5CED-4954-84B4-9E33A43A17F9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cataloguify.Client", "Cataloguify.Client\Cataloguify.Client.csproj", "{B45C3C84-6E94-4ACA-B550-0207659611A6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{4A3506B9-5CED-4954-84B4-9E33A43A17F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4A3506B9-5CED-4954-84B4-9E33A43A17F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4A3506B9-5CED-4954-84B4-9E33A43A17F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B45C3C84-6E94-4ACA-B550-0207659611A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B45C3C84-6E94-4ACA-B550-0207659611A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B45C3C84-6E94-4ACA-B550-0207659611A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B45C3C84-6E94-4ACA-B550-0207659611A6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
