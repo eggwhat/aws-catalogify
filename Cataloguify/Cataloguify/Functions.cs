@@ -54,6 +54,7 @@ public class Functions
     private const string key = "S0M3RAN0MS3CR3T!1!MAG1C!1!";
 
     [LambdaFunction]
+    [RestApi(LambdaHttpMethod.Post, "/")]
     public async Task<string> GenerateTokenAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
         var tokenRequest = JsonConvert.DeserializeObject<User>(request.Body);
@@ -95,13 +96,14 @@ public class Functions
                 new APIGatewayCustomAuthorizerPolicy.IAMPolicyStatement()
                 {
                     Effect = effect,
-                    Resource = new HashSet<string> { "arn:aws:execute-api:ap-south-1:821175633958:sctmtm1ge8/*/*" },
+                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:sctmtm1ge8/*/*" },
                     Action = new HashSet<string> { "execute-api:Invoke" }
                 }
             }
             }
         };
     }
+    
     private ClaimsPrincipal GetClaimsPrincipal(string authToken)
     {
         var tokenHandler = new JwtSecurityTokenHandler();

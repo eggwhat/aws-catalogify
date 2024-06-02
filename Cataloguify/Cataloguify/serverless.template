@@ -39,9 +39,15 @@
     "CataloguifyFunctionsGenerateTokenAsyncGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
+        "Tool": "Amazon.Lambda.Annotations",
+        "SyncedEvents": [
+          "RootPost"
+        ]
       },
       "Properties": {
+        "Architectures": [
+              "x86_64"
+        ],
         "Runtime": "dotnet8",
         "CodeUri": ".",
         "MemorySize": 256,
@@ -51,7 +57,15 @@
         ],
         "PackageType": "Zip",
         "Handler": "Cataloguify::Cataloguify.Functions_GenerateTokenAsync_Generated::GenerateTokenAsync",
-        "Events": {}
+        "Events": {
+          "RootPost": {
+            "Type": "Api",
+            "Properties": {
+              "Path": "/generate-token",
+              "Method": "POST"
+            }
+          }
+        }
       }
     },
     "CataloguifyFunctionsValidateTokenAsyncGenerated": {
@@ -69,6 +83,24 @@
         ],
         "PackageType": "Zip",
         "Handler": "Cataloguify::Cataloguify.Functions_ValidateTokenAsync_Generated::ValidateTokenAsync"
+      }
+    },
+    "LambdaAuthorizer": {
+      "Type": "AWS::Serverless::Function",
+      "Properties": {
+        "Architectures": [
+          "x86_64"
+        ],
+        "Handler": "Cataloguify::Cataloguify.Authorizer::FunctionHandler",
+        "Runtime": "dotnet8",
+        "CodeUri": ".",
+        "Role": "arn:aws:iam::885422015476:role/LabRole",
+        "MemorySize": 256,
+        "Timeout": 30,
+        "Policies": [
+          "LabRole"
+        ],
+        "PackageType": "Zip"
       }
     },
     "UserTable": {
