@@ -99,19 +99,19 @@ public class Functions
     [RestApi(LambdaHttpMethod.Post, "/generate-token")]
     public async Task<string> GenerateTokenAsync(APIGatewayProxyRequest request, ILambdaContext context)
     {
-        var tokenRequest = JsonConvert.DeserializeObject<User>(request.Body);
+        var tokenRequest = JsonConvert.DeserializeObject<AuthLambda.User>(request.Body);
         AmazonDynamoDBClient client = new AmazonDynamoDBClient();
         DynamoDBContext dbContext = new DynamoDBContext(client);
 
         //check if user exists in ddb
-        var user = await dbContext.LoadAsync<User>(tokenRequest?.Email);
+        var user = await dbContext.LoadAsync<AuthLambda.User>(tokenRequest?.Email);
         if (user == null) throw new Exception("User Not Found!");
         if (user.Password != tokenRequest.Password) throw new Exception("Invalid Credentials!");
         var token = GenerateJWT(user);
         return token;
     }
 
-    public string GenerateJWT(User user)
+    public string GenerateJWT(AuthLambda.User user)
     {
         var claims = new List<Claim> { new(ClaimTypes.Email, user.Email), new(ClaimTypes.Name, user.Username) };
         byte[] secret = Encoding.UTF8.GetBytes(key);
