@@ -27,7 +27,7 @@
         "PackageType": "Zip",
         "Events": {
           "RootGet": {
-            "Type": "Api",
+            "Type": "HttpApi",
             "Properties": {
               "Path": "/",
               "Method": "GET"
@@ -60,7 +60,7 @@
         "Handler": "Cataloguify::Cataloguify.Functions_GenerateTokenAsync_Generated::GenerateTokenAsync",
         "Events": {
           "RootPost": {
-            "Type": "Api",
+            "Type": "HttpApi",
             "Properties": {
               "Path": "/generate-token",
               "Method": "POST"
@@ -130,7 +130,7 @@
         "Handler": "Cataloguify::Cataloguify.Functions_FunctionHandler_Generated::FunctionHandler",
         "Events": {
           "RootPost": {
-            "Type": "Api",
+            "Type": "HttpApi",
             "Properties": {
               "Path": "/upload-image",
               "Method": "POST"
@@ -144,7 +144,7 @@
     "ApiURL": {
       "Description": "API endpoint URL for Prod environment",
       "Value": {
-        "Fn::Sub": "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+        "Fn::Sub": "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
       }
     }
   }

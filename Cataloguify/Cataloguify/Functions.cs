@@ -17,6 +17,7 @@ using Amazon.S3;
 using Amazon.Rekognition;
 using Amazon.Rekognition.Model;
 using Amazon.Runtime;
+using Amazon.S3.Model;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -25,6 +26,7 @@ namespace Cataloguify;
 
 public class Functions
 {
+    private const string S3_BUCKET_NAME = "cataloguify-bucket";
     public const float DEFAULT_MIN_CONFIDENCE = 70f;
 
     /// <summary>
@@ -85,7 +87,7 @@ public class Functions
     /// <param name="context">Information about the invocation, function, and execution environment</param>
     /// <returns>The response as an implicit <see cref="APIGatewayProxyResponse"/></returns>
     [LambdaFunction]
-    [RestApi(LambdaHttpMethod.Get, "/")]
+    [HttpApi(LambdaHttpMethod.Get, "/")]
     public IHttpResult Get(ILambdaContext context)
     {
         context.Logger.LogInformation("Handling the 'Get' Request");
@@ -96,8 +98,8 @@ public class Functions
     private const string key = "eiquief5phee9pazo0Faegaez9gohThailiur5woy2befiech1oarai4aiLi6ahVecah3ie9Aiz6Peij";
 
     [LambdaFunction]
-    [RestApi(LambdaHttpMethod.Post, "/generate-token")]
-    public async Task<string> GenerateTokenAsync(APIGatewayProxyRequest request, ILambdaContext context)
+    [HttpApi(LambdaHttpMethod.Post, "/generate-token")]
+    public async Task<string> GenerateTokenAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
         var tokenRequest = JsonConvert.DeserializeObject<AuthLambda.User>(request.Body);
         AmazonDynamoDBClient client = new AmazonDynamoDBClient();
@@ -138,7 +140,7 @@ public class Functions
                 new APIGatewayCustomAuthorizerPolicy.IAMPolicyStatement()
                 {
                     Effect = effect,
-                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:fu93dxbdj3/*/*" },
+                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:xuo9x6k2e6/*/*" },
                     Action = new HashSet<string> { "execute-api:Invoke" }
                 }
             }
@@ -167,8 +169,8 @@ public class Functions
     }
 
     [LambdaFunction]
-    [RestApi(LambdaHttpMethod.Post, "/upload-image")]
-    public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayProxyRequest request, ILambdaContext context)
+    [HttpApi(LambdaHttpMethod.Post, "/upload-image")]
+    public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
         try
         {
@@ -183,6 +185,20 @@ public class Functions
             };
 
             DetectFacesResponse detectFacesResponse = await RekognitionClient.DetectFacesAsync(detectFacesRequest);
+
+            // Upload the image to S3
+            string s3Key = Guid.NewGuid().ToString(); // Generate a unique key for the S3 object
+            using (var s3Client = S3Client)
+            {
+                PutObjectRequest s3Request = new PutObjectRequest
+                {
+                    BucketName = S3_BUCKET_NAME,
+                    Key = s3Key,
+                    InputStream = new MemoryStream(imageBytes)
+                };
+                PutObjectResponse s3Response = await s3Client.PutObjectAsync(s3Request);
+            }
+
 
             // Process the response
             StringBuilder responseBuilder = new StringBuilder();
