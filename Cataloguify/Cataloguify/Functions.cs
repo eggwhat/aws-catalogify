@@ -18,6 +18,7 @@ using Amazon.Rekognition;
 using Amazon.Rekognition.Model;
 using Amazon.Runtime;
 using Amazon.S3.Model;
+using Cataloguify.Documents;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -174,8 +175,8 @@ public class Functions
     {
         try
         {
-            var imageBase64 = request.Headers["Image"]; // Get image from header
-            byte[] imageBytes = Convert.FromBase64String(imageBase64);
+            var imageRequest = JsonConvert.DeserializeObject<ImageRequest>(request.Body);
+            byte[] imageBytes = Convert.FromBase64String(imageRequest.Image);
 
 
             // Detect faces in the image
