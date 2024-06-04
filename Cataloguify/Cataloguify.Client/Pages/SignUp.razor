@@ -15,7 +15,7 @@
     /* Form container with adaptive sizing and padding */
     .form-container {
         width: 100%;
-        max-width: 500px;
+        max-width: 600px;
         background: rgba(255, 255, 255, 0.85);
         padding: 2rem;
         border-radius: 8px;
@@ -32,35 +32,37 @@
     }
 </style>
 
-<div class="form-container" style="justify-content: center">
-    <h2>Welcome to Cataloguify</h2>
-    <p>Please sign up to create your account and explore our strength to the full.</p>
-    <h3>Sign Up</h3>
-    <RadzenTemplateForm Data="@signUpModel" Submit="@(async (SignUpModel args) => { await HandleSignUp(); })">
-        <RadzenFieldset>
-            <RadzenStack class="rz-p-12" Gap="1rem">
-                <RadzenTextBox Name="firstname" Placeholder="Firstname" Style="width: 100%;" @bind-Value="signUpModel.FirstName"/>
-                <RadzenRequiredValidator Component="firstname" Text="Firstname is required"/>
+<RadzenStack Orientation="Orientation.Horizontal">
+    <div class="form-container" style="justify-content: center">
+        <h2>Welcome to Cataloguify</h2>
+        <p>Please sign up to create your account and explore our strength to the full.</p>
+        <h3>Sign Up</h3>
+        <RadzenTemplateForm Data="@signUpModel" Submit="@(async (SignUpModel args) => { await HandleSignUp(); })">
+            <RadzenFieldset>
+                <RadzenStack class="rz-p-8" Gap="1rem">
+                    <RadzenTextBox Name="firstname" Placeholder="Firstname" Style="width: 100%;" @bind-Value="signUpModel.FirstName"/>
+                    <RadzenRequiredValidator Component="firstname" Text="Firstname is required"/>
 
-                <RadzenTextBox Name="lastname" Placeholder="Lastname" Style="width: 100%;" @bind-Value="signUpModel.LastName"/>
-                <RadzenRequiredValidator Component="lastname" Text="Lastname is required"/>
+                    <RadzenTextBox Name="lastname" Placeholder="Lastname" Style="width: 100%;" @bind-Value="signUpModel.LastName"/>
+                    <RadzenRequiredValidator Component="lastname" Text="Lastname is required"/>
 
-                <RadzenTextBox Name="email" Placeholder="Email" Style="width: 100%;" @bind-Value="signUpModel.Email"/>
-                <RadzenRequiredValidator Component="email" Text="Email is required"/>
-                <RadzenEmailValidator Component="email" Text="Email is invalid"/>
+                    <RadzenTextBox Name="email" Placeholder="Email" Style="width: 100%;" @bind-Value="signUpModel.Email"/>
+                    <RadzenRequiredValidator Component="email" Text="Email is required"/>
+                    <RadzenEmailValidator Component="email" Text="Email is invalid"/>
 
-                <RadzenPassword Name="password" Placeholder="Password" Style="width: 100%;" @bind-Value="signUpModel.Password"/>
-                <RadzenRequiredValidator Component="password" Text="Password is required"/>
+                    <RadzenPassword Name="password" Placeholder="Password" Style="width: 100%;" @bind-Value="signUpModel.Password"/>
+                    <RadzenRequiredValidator Component="password" Text="Password is required"/>
 
-                <RadzenButton ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Large" Text="Sign Up"/>
-            </RadzenStack>
-        </RadzenFieldset>
-    </RadzenTemplateForm>
+                    <RadzenButton ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Large" Text="Sign Up"/>
+                </RadzenStack>
+            </RadzenFieldset>
+        </RadzenTemplateForm>
 
-    <div style="text-align:center; margin-top: 3rem !important;">
-        <a href="/signin">Already have an account? Sign In</a>
+        <div style="text-align:center; margin-top: 3rem !important;">
+            <a href="/signin">Already have an account? Sign In</a>
+        </div>
     </div>
-</div>
+</RadzenStack>
 
 @code {
     private SignUpModel signUpModel = new SignUpModel();
