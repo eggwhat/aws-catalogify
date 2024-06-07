@@ -5,7 +5,6 @@ using Amazon.Lambda.Annotations;
 using Amazon.Lambda.Annotations.APIGateway;
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2;
-using AuthLambda;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -19,6 +18,7 @@ using Amazon.Rekognition.Model;
 using Amazon.Runtime;
 using Amazon.S3.Model;
 using Cataloguify.Documents;
+using Cataloguify.Requests;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -102,19 +102,39 @@ public class Functions
     [HttpApi(LambdaHttpMethod.Post, "/generate-token")]
     public async Task<string> GenerateTokenAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
-        var tokenRequest = JsonConvert.DeserializeObject<AuthLambda.User>(request.Body);
+        var tokenRequest = JsonConvert.DeserializeObject<Documents.User>(request.Body);
         AmazonDynamoDBClient client = new AmazonDynamoDBClient();
         DynamoDBContext dbContext = new DynamoDBContext(client);
 
         //check if user exists in ddb
-        var user = await dbContext.LoadAsync<AuthLambda.User>(tokenRequest?.Email);
+        var user = await dbContext.LoadAsync<Documents.User>(tokenRequest?.Email);
         if (user == null) throw new Exception("User Not Found!");
         if (user.Password != tokenRequest.Password) throw new Exception("Invalid Credentials!");
         var token = GenerateJWT(user);
         return token;
     }
 
-    public string GenerateJWT(AuthLambda.User user)
+    [LambdaFunction]
+    [HttpApi(LambdaHttpMethod.Post, "/sign-up")]
+    public async Task SignUpAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
+    {
+        var signUp = JsonConvert.DeserializeObject<SignUp>(request.Body);
+        AmazonDynamoDBClient client = new AmazonDynamoDBClient();
+        DynamoDBContext dbContext = new DynamoDBContext(client);
+
+        //check if user exists in ddb
+        var user = await dbContext.LoadAsync<Documents.User>(signUp?.Email);
+        if (user != null) throw new Exception("User Already Exists!");
+        if (signUp.Email == null || signUp.Username == null || signUp.Password == null)
+        {
+            throw new ArgumentException("Invalid sign up request");
+        }
+
+        var userDocument = new Documents.User(signUp.Email, signUp.Username, signUp.Password);
+        await dbContext.SaveAsync(userDocument);
+    }
+
+    public string GenerateJWT(Documents.User user)
     {
         var claims = new List<Claim> { new(ClaimTypes.Email, user.Email), new(ClaimTypes.Name, user.Username) };
         byte[] secret = Encoding.UTF8.GetBytes(key);
