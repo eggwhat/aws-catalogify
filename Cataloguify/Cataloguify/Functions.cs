@@ -135,7 +135,7 @@ public class Functions
                 return response;
             }
 
-            var signUpRequest = JsonConvert.DeserializeObject<Documents.User>(request.Body);
+            var signUpRequest = JsonConvert.DeserializeObject<SignUpRequest>(request.Body);
 
             // Validate user input (e.g., check if email, username, and password are not empty)
             if (string.IsNullOrEmpty(signUpRequest.Username) ||
@@ -146,6 +146,9 @@ public class Functions
                 response.Body = JsonConvert.SerializeObject(new { Message = "Invalid user data" });
                 return response;
             }
+
+            var existingUser = await dbContext.LoadAsync<Documents.User>(signUpRequest?.Email);
+            if (existingUser == null) throw new Exception("User Not Found!");
 
             var user = new Documents.User
             {
