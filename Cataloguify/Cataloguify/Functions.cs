@@ -118,7 +118,7 @@ public class Functions
     [HttpApi(LambdaHttpMethod.Post, "/sign-up")]
     public async Task SignUpAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
-        var signUp = JsonConvert.DeserializeObject<SignUp>(request.Body);
+        var signUp = JsonConvert.DeserializeObject<SignUpRequest>(request.Body);
         AmazonDynamoDBClient client = new AmazonDynamoDBClient();
         DynamoDBContext dbContext = new DynamoDBContext(client);
 
