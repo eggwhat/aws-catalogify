@@ -116,23 +116,59 @@ public class Functions
 
     [LambdaFunction]
     [HttpApi(LambdaHttpMethod.Post, "/sign-up")]
-    public async Task SignUpAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
+    public async Task<APIGatewayProxyResponse> SignUpAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
-        var signUp = JsonConvert.DeserializeObject<SignUpRequest>(request.Body);
         AmazonDynamoDBClient client = new AmazonDynamoDBClient();
         DynamoDBContext dbContext = new DynamoDBContext(client);
 
-        //check if user exists in ddb
-        var user = await dbContext.LoadAsync<Documents.User>(signUp?.Email);
-        if (user != null) throw new Exception("User Already Exists!");
-        if (signUp.Email == null || signUp.Username == null || signUp.Password == null)
+        var response = new APIGatewayProxyResponse
         {
-            throw new ArgumentException("Invalid sign up request");
+            Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+        };
+
+        try
+        {
+            if (string.IsNullOrEmpty(request.Body))
+            {
+                response.StatusCode = 400;
+                response.Body = JsonConvert.SerializeObject(new { Message = "Request body is empty" });
+                return response;
+            }
+
+            var signUpRequest = JsonConvert.DeserializeObject<Documents.User>(request.Body);
+
+            // Validate user input (e.g., check if email, username, and password are not empty)
+            if (string.IsNullOrEmpty(signUpRequest.Username) ||
+                string.IsNullOrEmpty(signUpRequest.Email) ||
+                string.IsNullOrEmpty(signUpRequest.Password))
+            {
+                response.StatusCode = 400;
+                response.Body = JsonConvert.SerializeObject(new { Message = "Invalid user data" });
+                return response;
+            }
+
+            var user = new Documents.User
+            {
+                Email = signUpRequest.Email,
+                Username = signUpRequest.Username,
+                Password = signUpRequest.Password
+            };
+            await dbContext.SaveAsync(user);
+
+            response.StatusCode = 201;
+            response.Body = JsonConvert.SerializeObject(new { Message = "User signed up successfully" });
+        }
+        catch (Exception ex)
+        {
+            context.Logger.LogLine($"Error: {ex.Message}");
+            response.StatusCode = 500;
+            response.Body = JsonConvert.SerializeObject(new { Message = "An error occurred during signup" });
         }
 
-        var userDocument = new Documents.User(signUp.Email, signUp.Username, signUp.Password);
-        await dbContext.SaveAsync(userDocument);
+        return response;
     }
+
+    
 
     public string GenerateJWT(Documents.User user)
     {

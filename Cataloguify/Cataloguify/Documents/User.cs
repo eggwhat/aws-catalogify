@@ -11,12 +11,5 @@ namespace Cataloguify.Documents
         public string? Username { get; set; }
         [DynamoDBProperty("password")]
         public string? Password { get; set; }
-
-        public User(string? email, string? username, string? password)
-        {
-            Email = email;
-            Username = username;
-            Password = password;
-        }
     }
 }
