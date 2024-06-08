@@ -148,7 +148,7 @@ public class Functions
             }
 
             var existingUser = await dbContext.LoadAsync<Documents.User>(signUpRequest?.Email);
-            if (existingUser == null) throw new Exception("User Not Found!");
+            if (existingUser != null) throw new Exception("User Already Exists!");
 
             var user = new Documents.User
             {
