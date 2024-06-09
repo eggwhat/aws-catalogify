@@ -19,6 +19,7 @@ using Amazon.Runtime;
 using Amazon.S3.Model;
 using Cataloguify.Documents;
 using Cataloguify.Requests;
+using Cataloguify.Dynamo;
 using Amazon.Auth.AccessControlPolicy;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
@@ -40,6 +41,7 @@ public class Functions
     IAmazonRekognition RekognitionClient { get; }
     IAmazonDynamoDB AmazonDynamoDBClient { get; }
     IDynamoDBContext DynamoDBContext { get; }
+    DynamoDBHelper DynamoDBHelper { get; }
 
     float MinConfidence { get; set; } = DEFAULT_MIN_CONFIDENCE;
 
@@ -54,6 +56,7 @@ public class Functions
         this.RekognitionClient = new AmazonRekognitionClient();
         this.AmazonDynamoDBClient = new AmazonDynamoDBClient();
         this.DynamoDBContext = new DynamoDBContext(AmazonDynamoDBClient);
+        this.DynamoDBHelper = new DynamoDBHelper(this.AmazonDynamoDBClient);
 
         var environmentMinConfidence = System.Environment.GetEnvironmentVariable(MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME);
         if (!string.IsNullOrWhiteSpace(environmentMinConfidence))
@@ -109,7 +112,7 @@ public class Functions
         var tokenRequest = JsonConvert.DeserializeObject<Documents.User>(request.Body);
 
         //check if user exists in ddb
-        var user = await DynamoDBContext.LoadAsync<Documents.User>(tokenRequest?.Email);
+        var user = await DynamoDBHelper.GetUserByEmailAsync(tokenRequest?.Email);
         if (user == null) throw new Exception("User Not Found!");
         if (user.Password != tokenRequest.Password) throw new Exception("Invalid Credentials!");
         var token = GenerateJWT(user);
@@ -146,11 +149,12 @@ public class Functions
                 return response;
             }
 
-            var existingUser = await DynamoDBContext.LoadAsync<Documents.User>(signUpRequest?.Email);
+            var existingUser = await DynamoDBHelper.GetUserByEmailAsync(signUpRequest.Email);
             if (existingUser != null) throw new Exception("User Already Exists!");
 
             var user = new Documents.User
             {
+                UserId = Guid.NewGuid(),
                 Email = signUpRequest.Email,
                 Username = signUpRequest.Username,
                 Password = signUpRequest.Password
@@ -170,11 +174,10 @@ public class Functions
         return response;
     }
 
-    
-
     public string GenerateJWT(Documents.User user)
     {
-        var claims = new List<Claim> { new(ClaimTypes.Email, user.Email), new(ClaimTypes.Name, user.Username) };
+        var claims = new List<Claim> { new(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
+            new(ClaimTypes.Email, user.Email), new(ClaimTypes.Name, user.Username) };
         byte[] secret = Encoding.UTF8.GetBytes(key);
         var signingCredentials = new SigningCredentials(new SymmetricSecurityKey(secret), SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(claims: claims, expires: DateTime.UtcNow.AddMinutes(15), signingCredentials: signingCredentials);
@@ -204,7 +207,7 @@ public class Functions
                 new APIGatewayCustomAuthorizerPolicy.IAMPolicyStatement()
                 {
                     Effect = effect,
-                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:xuo9x6k2e6/*/*" },
+                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:m6d1s7fhgk/*/*" },
                     Action = new HashSet<string> { "execute-api:Invoke" }
                 }
             }
