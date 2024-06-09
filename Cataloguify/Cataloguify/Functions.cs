@@ -57,25 +57,6 @@ public class Functions
         this.AmazonDynamoDBClient = new AmazonDynamoDBClient();
         this.DynamoDBContext = new DynamoDBContext(AmazonDynamoDBClient);
         this.DynamoDBHelper = new DynamoDBHelper(this.AmazonDynamoDBClient);
-
-        var environmentMinConfidence = System.Environment.GetEnvironmentVariable(MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME);
-        if (!string.IsNullOrWhiteSpace(environmentMinConfidence))
-        {
-            float value;
-            if (float.TryParse(environmentMinConfidence, out value))
-            {
-                this.MinConfidence = value;
-                Console.WriteLine($"Setting minimum confidence to {this.MinConfidence}");
-            }
-            else
-            {
-                Console.WriteLine($"Failed to parse value {environmentMinConfidence} for minimum confidence. Reverting back to default of {this.MinConfidence}");
-            }
-        }
-        else
-        {
-            Console.WriteLine($"Using default minimum confidence of {this.MinConfidence}");
-        }
     }
 
 
@@ -192,13 +173,13 @@ public class Functions
         var claimsPrincipal = GetClaimsPrincipal(authToken);
         var effect = claimsPrincipal == null ? "Deny" : "Allow";
         var principalId = claimsPrincipal == null ? "401" : claimsPrincipal?.FindFirst(ClaimTypes.Name)?.Value;
-        string email = claimsPrincipal.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value;
+        string userId = claimsPrincipal?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
         return new APIGatewayCustomAuthorizerResponse()
         {
             PrincipalID = principalId,
             Context = new APIGatewayCustomAuthorizerContextOutput()
             {
-                {"Email", email}
+                {"UserId", userId}
             },
             PolicyDocument = new APIGatewayCustomAuthorizerPolicy()
             {
@@ -239,11 +220,30 @@ public class Functions
     [HttpApi(LambdaHttpMethod.Post, "/upload-image")]
     public async Task<APIGatewayProxyResponse> UploadImage(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
+        var environmentMinConfidence = System.Environment.GetEnvironmentVariable(MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME);
+        if (!string.IsNullOrWhiteSpace(environmentMinConfidence))
+        {
+            float value;
+            if (float.TryParse(environmentMinConfidence, out value))
+            {
+                this.MinConfidence = value;
+                Console.WriteLine($"Setting minimum confidence to {this.MinConfidence}");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to parse value {environmentMinConfidence} for minimum confidence. Reverting back to default of {this.MinConfidence}");
+            }
+        }
+        else
+        {
+            Console.WriteLine($"Using default minimum confidence of {this.MinConfidence}");
+        }
+
         try
         {
             var authorizerContext = request.RequestContext.Authorizer;
-            var email = authorizerContext.Lambda["Email"];
-            Console.WriteLine($"Email: {email}");
+            var userId = authorizerContext.Lambda["UserId"];
+            Console.WriteLine($"UserId: {userId}");
             
             var imageRequest = JsonConvert.DeserializeObject<ImageRequest>(request.Body);
             byte[] imageBytes = Convert.FromBase64String(imageRequest.Image);
