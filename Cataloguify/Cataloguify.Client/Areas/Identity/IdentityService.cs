@@ -1,5 +1,4 @@
 using System.IdentityModel.Tokens.Jwt;
-using System.Text.Json;
 using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components;
 using Cataloguify.Client.HttpClients;
@@ -13,7 +12,7 @@ public class IdentityService : IIdentityService
     private readonly ILocalStorageService _localStorage;
     private readonly NavigationManager _navigationManager;
 
-    public string Token { get; set;}
+    public string? Token { get; private set;}
     public string? Email { get; private set; }
     public string? Username { get; private set; }
     public bool IsAuthenticated { get; set; }
@@ -52,6 +51,7 @@ public class IdentityService : IIdentityService
     public async Task Logout()
     {
         await _localStorage.RemoveItemAsync("Token");
+        Token = null;
         Email = null;
         Username = null;
         IsAuthenticated = false;

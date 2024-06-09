@@ -4,7 +4,7 @@ namespace Cataloguify.Client.Areas.Identity;
 
 public interface IIdentityService
 { 
-    string Token { get; set;}
+    string? Token { get; }
     string? Email { get; }
     string? Username { get; }
     bool IsAuthenticated { get; set; }
