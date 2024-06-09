@@ -21,6 +21,7 @@ using Cataloguify.Documents;
 using Cataloguify.Requests;
 using Cataloguify.Dynamo;
 using Amazon.Auth.AccessControlPolicy;
+using System.Text.Json;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -242,7 +243,7 @@ public class Functions
         try
         {
             var authorizerContext = request.RequestContext.Authorizer;
-            var userId = authorizerContext.Lambda["UserId"];
+            var userId = ((JsonElement)authorizerContext.Lambda["UserId"]).Deserialize<string>();
             Console.WriteLine($"UserId: {userId}");
             
             var imageRequest = JsonConvert.DeserializeObject<ImageRequest>(request.Body);
@@ -258,31 +259,30 @@ public class Functions
             DetectFacesResponse detectFacesResponse = await RekognitionClient.DetectFacesAsync(detectFacesRequest);
 
             // Upload the image to S3
-            string s3Key = Guid.NewGuid().ToString(); // Generate a unique key for the S3 object
+            var s3Key = Guid.NewGuid(); // Generate a unique key for the S3 object
             using (var s3Client = S3Client)
             {
                 PutObjectRequest s3Request = new PutObjectRequest
                 {
                     BucketName = S3_BUCKET_NAME,
-                    Key = s3Key,
+                    Key = s3Key.ToString(),
                     InputStream = new MemoryStream(imageBytes)
                 };
                 PutObjectResponse s3Response = await s3Client.PutObjectAsync(s3Request);
             }
 
-
-            // Process the response
-            StringBuilder responseBuilder = new StringBuilder();
-            foreach (FaceDetail faceDetail in detectFacesResponse.FaceDetails)
+            var imageInfo = new ImageInfo
             {
-                responseBuilder.AppendLine($"Detected face with confidence: {faceDetail.Confidence}");
-            }
+                ImageKey = s3Key,
+                UserId = new Guid(userId),
+                Tags = new List<string>()
+            };
+            await DynamoDBContext.SaveAsync(imageInfo);
 
             // Return response
             return new APIGatewayProxyResponse
             {
                 StatusCode = 200,
-                Body = responseBuilder.ToString(),
                 Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" } }
             };
         }
