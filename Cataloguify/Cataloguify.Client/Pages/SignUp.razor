@@ -1,0 +1,85 @@
+@page "/signup"
+@using Cataloguify.Client.Models
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<style>
+    /* General body and font styles */
+    body {
+        margin: 0;
+        font-family: 'Roboto', sans-serif;
+        background: #f4f4f9;
+        color: #333;
+    }
+
+    /* Form container with adaptive sizing and padding */
+    .form-container {
+        width: 100%;
+        max-width: 600px;
+        background: rgba(255, 255, 255, 0.85);
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    /* Link and button styles for interaction */
+    a, button {
+        transition: color 0.3s ease, background-color 0.3s ease;
+    }
+
+    a:hover, button:hover {
+        color: #007BFF; /* Highlight color on hover */
+    }
+</style>
+
+<RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center">
+    <div class="form-container">
+        <h2>Welcome to Cataloguify</h2>
+        <p>Please sign up to create your account and explore our strength to the full.</p>
+        <h3>Sign Up</h3>
+        <RadzenTemplateForm Data="@signUpModel" Submit="@(async (SignUpModel args) => { await HandleSignUp(); })">
+            <RadzenFieldset>
+                <RadzenStack class="rz-p-8" Gap="1rem">
+                    <RadzenTextBox Name="firstname" Placeholder="Firstname" Style="width: 100%;" @bind-Value="signUpModel.FirstName"/>
+                    <RadzenRequiredValidator Component="firstname" Text="Firstname is required"/>
+
+                    <RadzenTextBox Name="lastname" Placeholder="Lastname" Style="width: 100%;" @bind-Value="signUpModel.LastName"/>
+                    <RadzenRequiredValidator Component="lastname" Text="Lastname is required"/>
+
+                    <RadzenTextBox Name="email" Placeholder="Email" Style="width: 100%;" @bind-Value="signUpModel.Email"/>
+                    <RadzenRequiredValidator Component="email" Text="Email is required"/>
+                    <RadzenEmailValidator Component="email" Text="Email is invalid"/>
+
+                    <RadzenPassword Name="password" Placeholder="Password" Style="width: 100%;" @bind-Value="signUpModel.Password"/>
+                    <RadzenRequiredValidator Component="password" Text="Password is required"/>
+
+                    <RadzenButton ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Large" Text="Sign Up"/>
+                </RadzenStack>
+            </RadzenFieldset>
+        </RadzenTemplateForm>
+
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="/signin">Already have an account? Sign In</a>
+        </div>
+    </div>
+</RadzenStack>
+
+@code {
+    private SignUpModel signUpModel = new SignUpModel();
+    private bool showError = false;
+    private string errorMessage = string.Empty;
+    private bool popup;
+
+    private async Task HandleSignUp()
+    {
+        // TODO: prepare handling of signing up
+        // var response = await IdentityService.SignUpAsync(signUpModel.FirstName, signUpModel.LastName, signUpModel.Email, signUpModel.Password, "user");
+        // if(response.ErrorMessage == null)
+        //     NavigationManager.NavigateTo("/signin");
+        // else
+        // {
+        //     showError = true;
+        //     errorMessage = ErrorMapperService.MapError(response.ErrorMessage);
+        // }
+    }
+}

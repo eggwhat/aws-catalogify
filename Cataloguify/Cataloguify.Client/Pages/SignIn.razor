@@ -1,0 +1,81 @@
+@page "/signin"
+@using Cataloguify.Client.Models
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<style>
+    /* General body and font styles */
+    body {
+        margin: 0;
+        font-family: 'Roboto', sans-serif;
+        background: #f4f4f9;
+        color: #333;
+    }
+
+    /* Form container with adaptive sizing and padding */
+    .form-container {
+        width: 100%;
+        max-width: 600px;
+        background: rgba(255, 255, 255, 0.85);
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    /* Link and button styles for interaction */
+    a, button {
+        transition: color 0.3s ease, background-color 0.3s ease;
+    }
+
+    a:hover, button:hover {
+        color: #007BFF; /* Highlight color on hover */
+    }
+</style>
+
+<RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center">
+    <div class="form-container">
+        <div class="sign-in-up-pre-info">
+            <h2>Welcome to Cataloguify</h2>
+            <p>Please sign in to access your account and manage your photos.</p>
+            <h3>Sign In</h3>
+        </div>
+        <RadzenTemplateForm Data="@signInModel" Submit="@(async (SignInModel args) => { await HandleSignIn(); })">
+            <RadzenFieldset>
+                <RadzenStack class="rz-p-8" Gap="1rem">
+                    <RadzenTextBox Name="email" Placeholder="Email" Style="width: 100%;" @bind-Value="signInModel.Email"/>
+                    <RadzenRequiredValidator Component="email" Text="Email is required"/>
+                    <RadzenEmailValidator Component="email" Text="Email is invalid"/>
+
+                    <RadzenPassword Name="password" Placeholder="Password" Style="width: 100%;" @bind-Value="signInModel.Password"/>
+                    <RadzenRequiredValidator Component="password" Text="Password is required"/>
+
+                    <RadzenButton ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Large" Text="Sign In"/>
+                </RadzenStack>
+            </RadzenFieldset>
+        </RadzenTemplateForm>
+
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="/signup">Create Account</a>
+        </div>
+    </div>
+</RadzenStack>
+
+@code {
+    private SignInModel signInModel = new SignInModel();
+    private bool showError = false;
+    private string errorMessage = string.Empty;
+    private bool popup;
+
+    private async Task HandleSignIn()
+    {
+        // TODO: prepare handling of signing in
+        // var response = await IdentityService.SignUpAsync(signUpModel.FirstName, signUpModel.LastName, signUpModel.Email, signUpModel.Password, "user");
+        // if(response.ErrorMessage == null)
+        //     NavigationManager.NavigateTo("/signin");
+        // else
+        // {
+        //     showError = true;
+        //     errorMessage = ErrorMapperService.MapError(response.ErrorMessage);
+        // }
+    }
+}
