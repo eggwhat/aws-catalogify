@@ -5,7 +5,6 @@ using Amazon.Lambda.Annotations;
 using Amazon.Lambda.Annotations.APIGateway;
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2;
-using AuthLambda;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -19,6 +18,9 @@ using Amazon.Rekognition.Model;
 using Amazon.Runtime;
 using Amazon.S3.Model;
 using Cataloguify.Documents;
+using Cataloguify.Requests;
+using Cataloguify.Dynamo;
+using Amazon.Auth.AccessControlPolicy;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -36,8 +38,10 @@ public class Functions
     public const string MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME = "MinConfidence";
 
     IAmazonS3 S3Client { get; }
-
     IAmazonRekognition RekognitionClient { get; }
+    IAmazonDynamoDB AmazonDynamoDBClient { get; }
+    IDynamoDBContext DynamoDBContext { get; }
+    DynamoDBHelper DynamoDBHelper { get; }
 
     float MinConfidence { get; set; } = DEFAULT_MIN_CONFIDENCE;
 
@@ -50,6 +54,9 @@ public class Functions
     {
         this.S3Client = new AmazonS3Client();
         this.RekognitionClient = new AmazonRekognitionClient();
+        this.AmazonDynamoDBClient = new AmazonDynamoDBClient();
+        this.DynamoDBContext = new DynamoDBContext(AmazonDynamoDBClient);
+        this.DynamoDBHelper = new DynamoDBHelper(this.AmazonDynamoDBClient);
 
         var environmentMinConfidence = System.Environment.GetEnvironmentVariable(MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME);
         if (!string.IsNullOrWhiteSpace(environmentMinConfidence))
@@ -102,21 +109,75 @@ public class Functions
     [HttpApi(LambdaHttpMethod.Post, "/generate-token")]
     public async Task<string> GenerateTokenAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
-        var tokenRequest = JsonConvert.DeserializeObject<AuthLambda.User>(request.Body);
-        AmazonDynamoDBClient client = new AmazonDynamoDBClient();
-        DynamoDBContext dbContext = new DynamoDBContext(client);
+        var tokenRequest = JsonConvert.DeserializeObject<Documents.User>(request.Body);
 
         //check if user exists in ddb
-        var user = await dbContext.LoadAsync<AuthLambda.User>(tokenRequest?.Email);
+        var user = await DynamoDBHelper.GetUserByEmailAsync(tokenRequest?.Email);
         if (user == null) throw new Exception("User Not Found!");
         if (user.Password != tokenRequest.Password) throw new Exception("Invalid Credentials!");
         var token = GenerateJWT(user);
         return token;
     }
 
-    public string GenerateJWT(AuthLambda.User user)
+    [LambdaFunction]
+    [HttpApi(LambdaHttpMethod.Post, "/sign-up")]
+    public async Task<APIGatewayProxyResponse> SignUpAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
-        var claims = new List<Claim> { new(ClaimTypes.Email, user.Email), new(ClaimTypes.Name, user.Username) };
+        var response = new APIGatewayProxyResponse
+        {
+            Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+        };
+
+        try
+        {
+            if (string.IsNullOrEmpty(request.Body))
+            {
+                response.StatusCode = 400;
+                response.Body = JsonConvert.SerializeObject(new { Message = "Request body is empty" });
+                return response;
+            }
+
+            var signUpRequest = JsonConvert.DeserializeObject<SignUpRequest>(request.Body);
+
+            // Validate user input (e.g., check if email, username, and password are not empty)
+            if (string.IsNullOrEmpty(signUpRequest.Username) ||
+                string.IsNullOrEmpty(signUpRequest.Email) ||
+                string.IsNullOrEmpty(signUpRequest.Password))
+            {
+                response.StatusCode = 400;
+                response.Body = JsonConvert.SerializeObject(new { Message = "Invalid user data" });
+                return response;
+            }
+
+            var existingUser = await DynamoDBHelper.GetUserByEmailAsync(signUpRequest.Email);
+            if (existingUser != null) throw new Exception("User Already Exists!");
+
+            var user = new Documents.User
+            {
+                UserId = Guid.NewGuid(),
+                Email = signUpRequest.Email,
+                Username = signUpRequest.Username,
+                Password = signUpRequest.Password
+            };
+            await DynamoDBContext.SaveAsync(user);
+
+            response.StatusCode = 201;
+            response.Body = JsonConvert.SerializeObject(new { Message = "User signed up successfully" });
+        }
+        catch (Exception ex)
+        {
+            context.Logger.LogLine($"Error: {ex.Message}");
+            response.StatusCode = 500;
+            response.Body = JsonConvert.SerializeObject(new { Message = "An error occurred during signup" });
+        }
+
+        return response;
+    }
+
+    public string GenerateJWT(Documents.User user)
+    {
+        var claims = new List<Claim> { new(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
+            new(ClaimTypes.Email, user.Email), new(ClaimTypes.Name, user.Username) };
         byte[] secret = Encoding.UTF8.GetBytes(key);
         var signingCredentials = new SigningCredentials(new SymmetricSecurityKey(secret), SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(claims: claims, expires: DateTime.UtcNow.AddMinutes(15), signingCredentials: signingCredentials);
@@ -131,9 +192,14 @@ public class Functions
         var claimsPrincipal = GetClaimsPrincipal(authToken);
         var effect = claimsPrincipal == null ? "Deny" : "Allow";
         var principalId = claimsPrincipal == null ? "401" : claimsPrincipal?.FindFirst(ClaimTypes.Name)?.Value;
+        string email = claimsPrincipal.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value;
         return new APIGatewayCustomAuthorizerResponse()
         {
             PrincipalID = principalId,
+            Context = new APIGatewayCustomAuthorizerContextOutput()
+            {
+                {"Email", email}
+            },
             PolicyDocument = new APIGatewayCustomAuthorizerPolicy()
             {
                 Statement = new List<APIGatewayCustomAuthorizerPolicy.IAMPolicyStatement>
@@ -141,7 +207,7 @@ public class Functions
                 new APIGatewayCustomAuthorizerPolicy.IAMPolicyStatement()
                 {
                     Effect = effect,
-                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:xuo9x6k2e6/*/*" },
+                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:m6d1s7fhgk/*/*" },
                     Action = new HashSet<string> { "execute-api:Invoke" }
                 }
             }
@@ -171,10 +237,14 @@ public class Functions
 
     [LambdaFunction]
     [HttpApi(LambdaHttpMethod.Post, "/upload-image")]
-    public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
+    public async Task<APIGatewayProxyResponse> UploadImage(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
         try
         {
+            var authorizerContext = request.RequestContext.Authorizer;
+            var email = authorizerContext.Lambda["Email"];
+            Console.WriteLine($"Email: {email}");
+            
             var imageRequest = JsonConvert.DeserializeObject<ImageRequest>(request.Body);
             byte[] imageBytes = Convert.FromBase64String(imageRequest.Image);
 
