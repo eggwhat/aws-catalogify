@@ -1,15 +1,17 @@
 using Amazon.DynamoDBv2.DataModel;
 
-namespace AuthLambda
+namespace Cataloguify.Documents
 {
     [DynamoDBTable("users")]
     public class User
     {
-        [DynamoDBHashKey("email")]
+        [DynamoDBHashKey("UserId")]
+        public Guid UserId { get; set; }
+        [DynamoDBProperty("Email")]
         public string? Email { get; set; }
-        [DynamoDBProperty("username")]
+        [DynamoDBProperty("Username")]
         public string? Username { get; set; }
-        [DynamoDBProperty("password")]
+        [DynamoDBProperty("Password")]
         public string? Password { get; set; }
     }
 }
