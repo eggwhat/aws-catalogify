@@ -40,16 +40,13 @@
         <RadzenTemplateForm Data="@signUpModel" Submit="@(async (SignUpModel args) => { await HandleSignUp(); })">
             <RadzenFieldset>
                 <RadzenStack class="rz-p-8" Gap="1rem">
-                    <RadzenTextBox Name="firstname" Placeholder="Firstname" Style="width: 100%;" @bind-Value="signUpModel.FirstName"/>
-                    <RadzenRequiredValidator Component="firstname" Text="Firstname is required"/>
-
-                    <RadzenTextBox Name="lastname" Placeholder="Lastname" Style="width: 100%;" @bind-Value="signUpModel.LastName"/>
-                    <RadzenRequiredValidator Component="lastname" Text="Lastname is required"/>
-
                     <RadzenTextBox Name="email" Placeholder="Email" Style="width: 100%;" @bind-Value="signUpModel.Email"/>
                     <RadzenRequiredValidator Component="email" Text="Email is required"/>
                     <RadzenEmailValidator Component="email" Text="Email is invalid"/>
 
+                    <RadzenTextBox Name="username" Placeholder="Username" Style="width: 100%;" @bind-Value="signUpModel.Username"/>
+                    <RadzenRequiredValidator Component="username" Text="Username is required"/>
+                    
                     <RadzenPassword Name="password" Placeholder="Password" Style="width: 100%;" @bind-Value="signUpModel.Password"/>
                     <RadzenRequiredValidator Component="password" Text="Password is required"/>
 
