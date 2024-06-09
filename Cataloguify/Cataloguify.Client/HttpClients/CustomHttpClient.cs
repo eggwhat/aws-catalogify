@@ -3,6 +3,7 @@ using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization; 
 using Polly;
+
 namespace Cataloguify.Client.HttpClients;
 
 public class CustomHttpClient : IHttpClient
