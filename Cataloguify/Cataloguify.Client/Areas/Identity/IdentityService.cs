@@ -12,9 +12,9 @@ public class IdentityService : IIdentityService
     private readonly ILocalStorageService _localStorage;
     private readonly NavigationManager _navigationManager;
 
-    public string? Token { get; private set;}
-    public string? Email { get; private set; }
-    public string? Username { get; private set; }
+    public string Token { get; private set;}
+    public string Email { get; private set; }
+    public string Username { get; private set; }
     public bool IsAuthenticated { get; set; }
 
     public IdentityService(IHttpClient httpClient, ILocalStorageService localStorage,
