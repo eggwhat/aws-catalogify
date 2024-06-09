@@ -19,6 +19,7 @@ using Amazon.Runtime;
 using Amazon.S3.Model;
 using Cataloguify.Documents;
 using Cataloguify.Requests;
+using Amazon.Auth.AccessControlPolicy;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -190,9 +191,14 @@ public class Functions
         var claimsPrincipal = GetClaimsPrincipal(authToken);
         var effect = claimsPrincipal == null ? "Deny" : "Allow";
         var principalId = claimsPrincipal == null ? "401" : claimsPrincipal?.FindFirst(ClaimTypes.Name)?.Value;
+        string email = claimsPrincipal.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value;
         return new APIGatewayCustomAuthorizerResponse()
         {
             PrincipalID = principalId,
+            Context = new APIGatewayCustomAuthorizerContextOutput()
+            {
+                {"Email", email}
+            },
             PolicyDocument = new APIGatewayCustomAuthorizerPolicy()
             {
                 Statement = new List<APIGatewayCustomAuthorizerPolicy.IAMPolicyStatement>
@@ -230,10 +236,14 @@ public class Functions
 
     [LambdaFunction]
     [HttpApi(LambdaHttpMethod.Post, "/upload-image")]
-    public async Task<APIGatewayProxyResponse> FunctionHandler(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
+    public async Task<APIGatewayProxyResponse> UploadImage(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
         try
         {
+            var authorizerContext = request.RequestContext.Authorizer;
+            var email = authorizerContext.Lambda["Email"];
+            Console.WriteLine($"Email: {email}");
+            
             var imageRequest = JsonConvert.DeserializeObject<ImageRequest>(request.Body);
             byte[] imageBytes = Convert.FromBase64String(imageRequest.Image);
 
