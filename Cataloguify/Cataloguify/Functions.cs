@@ -37,8 +37,9 @@ public class Functions
     public const string MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME = "MinConfidence";
 
     IAmazonS3 S3Client { get; }
-
     IAmazonRekognition RekognitionClient { get; }
+    IAmazonDynamoDB AmazonDynamoDBClient { get; }
+    IDynamoDBContext DynamoDBContext { get; }
 
     float MinConfidence { get; set; } = DEFAULT_MIN_CONFIDENCE;
 
@@ -51,6 +52,8 @@ public class Functions
     {
         this.S3Client = new AmazonS3Client();
         this.RekognitionClient = new AmazonRekognitionClient();
+        this.AmazonDynamoDBClient = new AmazonDynamoDBClient();
+        this.DynamoDBContext = new DynamoDBContext(AmazonDynamoDBClient);
 
         var environmentMinConfidence = System.Environment.GetEnvironmentVariable(MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME);
         if (!string.IsNullOrWhiteSpace(environmentMinConfidence))
@@ -104,11 +107,9 @@ public class Functions
     public async Task<string> GenerateTokenAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
         var tokenRequest = JsonConvert.DeserializeObject<Documents.User>(request.Body);
-        AmazonDynamoDBClient client = new AmazonDynamoDBClient();
-        DynamoDBContext dbContext = new DynamoDBContext(client);
 
         //check if user exists in ddb
-        var user = await dbContext.LoadAsync<Documents.User>(tokenRequest?.Email);
+        var user = await DynamoDBContext.LoadAsync<Documents.User>(tokenRequest?.Email);
         if (user == null) throw new Exception("User Not Found!");
         if (user.Password != tokenRequest.Password) throw new Exception("Invalid Credentials!");
         var token = GenerateJWT(user);
@@ -119,9 +120,6 @@ public class Functions
     [HttpApi(LambdaHttpMethod.Post, "/sign-up")]
     public async Task<APIGatewayProxyResponse> SignUpAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
-        AmazonDynamoDBClient client = new AmazonDynamoDBClient();
-        DynamoDBContext dbContext = new DynamoDBContext(client);
-
         var response = new APIGatewayProxyResponse
         {
             Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
@@ -148,7 +146,7 @@ public class Functions
                 return response;
             }
 
-            var existingUser = await dbContext.LoadAsync<Documents.User>(signUpRequest?.Email);
+            var existingUser = await DynamoDBContext.LoadAsync<Documents.User>(signUpRequest?.Email);
             if (existingUser != null) throw new Exception("User Already Exists!");
 
             var user = new Documents.User
@@ -157,7 +155,7 @@ public class Functions
                 Username = signUpRequest.Username,
                 Password = signUpRequest.Password
             };
-            await dbContext.SaveAsync(user);
+            await DynamoDBContext.SaveAsync(user);
 
             response.StatusCode = 201;
             response.Body = JsonConvert.SerializeObject(new { Message = "User signed up successfully" });
