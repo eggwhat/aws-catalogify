@@ -44,7 +44,8 @@ public class IdentityService : IIdentityService
         Email = payload.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
         Username = payload.Claims.FirstOrDefault(c => c.Type == "username")?.Value;
         IsAuthenticated = true;
-
+        await _localStorage.SetItemAsStringAsync("IsAuthenticated", IsAuthenticated.ToString());
+        
         return response;
     }
 
@@ -55,6 +56,7 @@ public class IdentityService : IIdentityService
         Email = null;
         Username = null;
         IsAuthenticated = false;
+        await _localStorage.SetItemAsStringAsync("IsAuthenticated", IsAuthenticated.ToString());
         _navigationManager.NavigateTo("signin", forceLoad: true);
     }
 }
