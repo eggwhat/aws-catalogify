@@ -1,5 +1,7 @@
 @page "/signin"
+@using Cataloguify.Client.Areas.Identity
 @using Cataloguify.Client.Models
+@inject IIdentityService IdentityService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 
@@ -39,6 +41,9 @@
             <p>Please sign in to access your account and manage your photos.</p>
             <h3>Sign In</h3>
         </div>
+        <RadzenAlert AlertStyle="AlertStyle.Danger" @bind-Visible="showError" Close="@OnAlertClose">
+            @errorMessage
+        </RadzenAlert>
         <RadzenTemplateForm Data="@signInModel" Submit="@(async (SignInModel args) => { await HandleSignIn(); })">
             <RadzenFieldset>
                 <RadzenStack class="rz-p-8" Gap="1rem">
@@ -64,18 +69,34 @@
     private SignInModel signInModel = new SignInModel();
     private bool showError = false;
     private string errorMessage = string.Empty;
-    private bool popup;
 
+    private void OnAlertClose()
+    {
+        showError = false;
+        errorMessage = string.Empty;
+    }
+    
     private async Task HandleSignIn()
     {
-        // TODO: prepare handling of signing in
-        // var response = await IdentityService.SignUpAsync(signUpModel.FirstName, signUpModel.LastName, signUpModel.Email, signUpModel.Password, "user");
-        // if(response.ErrorMessage == null)
-        //     NavigationManager.NavigateTo("/signin");
-        // else
-        // {
-        //     showError = true;
-        //     errorMessage = ErrorMapperService.MapError(response.ErrorMessage);
-        // }
+        try
+        {
+            var response = await IdentityService.SignInAsync(signInModel.Email, signInModel.Password);
+            if (!string.IsNullOrEmpty(response.Content))
+            {
+                NavigationManager.NavigateTo("/", true);
+            }
+            else
+            {
+                showError = true;
+                errorMessage = $"Error during sign in: {response.ErrorMessage.Reason}";
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            showError = true;
+            errorMessage = $"Error during sign in: {ex.Message}";
+            StateHasChanged(); 
+        }
     }
 }

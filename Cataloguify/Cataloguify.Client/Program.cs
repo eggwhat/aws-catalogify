@@ -9,13 +9,14 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
+var httpClientOptions = new HttpClientOptions();
+builder.Configuration.Bind("HttpClientOptions", httpClientOptions);
+builder.Services.AddSingleton(httpClientOptions);
+
 builder.Services.AddHttpClient<IHttpClient, CustomHttpClient>((serviceProvider, client) =>
 {
-    var options = builder.Configuration.GetSection("HttpClientOptions").Get<HttpClientOptions>();
-    if (options != null)
-    {
-        client.BaseAddress = new Uri(options.ApiUrl);   
-    }
+    var options = serviceProvider.GetRequiredService<HttpClientOptions>();
+    client.BaseAddress = new Uri(options.ApiUrl);
 });
 
 builder.Services.AddBlazoredLocalStorage(); 
