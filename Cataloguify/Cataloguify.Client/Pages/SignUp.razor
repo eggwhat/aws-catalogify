@@ -1,5 +1,7 @@
 @page "/signup"
+@using Cataloguify.Client.Areas.Identity
 @using Cataloguify.Client.Models
+@inject IIdentityService IdentityService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 
@@ -37,19 +39,19 @@
         <h2>Welcome to Cataloguify</h2>
         <p>Please sign up to create your account and explore our strength to the full.</p>
         <h3>Sign Up</h3>
+        <RadzenAlert AlertStyle="AlertStyle.Danger" @bind-Visible="showError" Close="@OnAlertClose">
+            @errorMessage
+        </RadzenAlert>
         <RadzenTemplateForm Data="@signUpModel" Submit="@(async (SignUpModel args) => { await HandleSignUp(); })">
             <RadzenFieldset>
                 <RadzenStack class="rz-p-8" Gap="1rem">
-                    <RadzenTextBox Name="firstname" Placeholder="Firstname" Style="width: 100%;" @bind-Value="signUpModel.FirstName"/>
-                    <RadzenRequiredValidator Component="firstname" Text="Firstname is required"/>
-
-                    <RadzenTextBox Name="lastname" Placeholder="Lastname" Style="width: 100%;" @bind-Value="signUpModel.LastName"/>
-                    <RadzenRequiredValidator Component="lastname" Text="Lastname is required"/>
-
                     <RadzenTextBox Name="email" Placeholder="Email" Style="width: 100%;" @bind-Value="signUpModel.Email"/>
                     <RadzenRequiredValidator Component="email" Text="Email is required"/>
                     <RadzenEmailValidator Component="email" Text="Email is invalid"/>
 
+                    <RadzenTextBox Name="username" Placeholder="Username" Style="width: 100%;" @bind-Value="signUpModel.Username"/>
+                    <RadzenRequiredValidator Component="username" Text="Username is required"/>
+                    
                     <RadzenPassword Name="password" Placeholder="Password" Style="width: 100%;" @bind-Value="signUpModel.Password"/>
                     <RadzenRequiredValidator Component="password" Text="Password is required"/>
 
@@ -68,18 +70,34 @@
     private SignUpModel signUpModel = new SignUpModel();
     private bool showError = false;
     private string errorMessage = string.Empty;
-    private bool popup;
 
+    private void OnAlertClose()
+    {
+        showError = false;
+        errorMessage = string.Empty;
+    }
+    
     private async Task HandleSignUp()
     {
-        // TODO: prepare handling of signing up
-        // var response = await IdentityService.SignUpAsync(signUpModel.FirstName, signUpModel.LastName, signUpModel.Email, signUpModel.Password, "user");
-        // if(response.ErrorMessage == null)
-        //     NavigationManager.NavigateTo("/signin");
-        // else
-        // {
-        //     showError = true;
-        //     errorMessage = ErrorMapperService.MapError(response.ErrorMessage);
-        // }
+        try
+        {
+            var response = await IdentityService.SignUpAsync(signUpModel.Email, signUpModel.Username, signUpModel.Password);
+            if (response.ErrorMessage == null)
+            {
+                NavigationManager.NavigateTo("/signin");   
+            }
+            else
+            {
+                showError = true;
+                errorMessage = $"Error during sign up: {response.ErrorMessage.Reason}";
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            showError = true;
+            errorMessage = $"Error during sign up: {ex.Message}";
+            StateHasChanged(); 
+        }
     }
 }
