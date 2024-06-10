@@ -11,7 +11,6 @@ using System.Security.Claims;
 using System.Text;
 using Newtonsoft.Json;
 using Amazon.DynamoDBv2.Model;
-using static System.Net.Mime.MediaTypeNames;
 using Amazon.S3;
 using Amazon.Rekognition;
 using Amazon.Rekognition.Model;
@@ -244,19 +243,21 @@ public class Functions
         {
             var authorizerContext = request.RequestContext.Authorizer;
             var userId = ((JsonElement)authorizerContext.Lambda["UserId"]).Deserialize<string>();
-            Console.WriteLine($"UserId: {userId}");
             
             var imageRequest = JsonConvert.DeserializeObject<ImageRequest>(request.Body);
             byte[] imageBytes = Convert.FromBase64String(imageRequest.Image);
 
-
             // Detect faces in the image
-            DetectFacesRequest detectFacesRequest = new DetectFacesRequest
+            DetectLabelsRequest detectLabelsRequest = new DetectLabelsRequest
             {
-                Image = new Amazon.Rekognition.Model.Image { Bytes = new MemoryStream(imageBytes) }
+                Image = new Amazon.Rekognition.Model.Image { Bytes = new MemoryStream(imageBytes) },
+                MaxLabels = 10,
+                MinConfidence = 75F
             };
 
-            DetectFacesResponse detectFacesResponse = await RekognitionClient.DetectFacesAsync(detectFacesRequest);
+            DetectLabelsResponse detectLabelsResponse = await RekognitionClient.DetectLabelsAsync(detectLabelsRequest);
+            foreach (Label label in detectLabelsResponse.Labels)
+                Console.WriteLine("{0}: {1}", label.Name, label.Confidence);
 
             // Upload the image to S3
             var s3Key = Guid.NewGuid(); // Generate a unique key for the S3 object
@@ -275,7 +276,7 @@ public class Functions
             {
                 ImageKey = s3Key,
                 UserId = new Guid(userId),
-                Tags = new List<string>()
+                Tags = detectLabelsResponse.Labels.Select(x => x.Name).ToList()
             };
             await DynamoDBContext.SaveAsync(imageInfo);
 
