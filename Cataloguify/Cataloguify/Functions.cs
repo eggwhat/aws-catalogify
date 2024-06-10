@@ -281,7 +281,7 @@ public class Functions
             await DynamoDBContext.SaveAsync(imageInfo);
 
             // Return response
-            return new APIGatewayProxyResponse
+                return new APIGatewayProxyResponse
             {
                 StatusCode = 200,
                 Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" } }
@@ -298,5 +298,33 @@ public class Functions
                 Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" } }
             };
         }
+    }
+
+    [LambdaFunction]
+    [HttpApi(LambdaHttpMethod.Get, "images")]
+    public async Task GetImages(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
+    {
+
+    }
+
+    private string GeneratePresignedURL(string objectKey, double duration)
+    {
+        string urlString = string.Empty;
+        try
+        {
+            var request = new GetPreSignedUrlRequest()
+            {
+                BucketName = S3_BUCKET_NAME,
+                Key = objectKey,
+                Expires = DateTime.UtcNow.AddHours(duration),
+            };
+            urlString = S3Client.GetPreSignedURL(request);
+        }
+        catch (AmazonS3Exception ex)
+        {
+            Console.WriteLine($"Error:'{ex.Message}'");
+        }
+
+        return urlString;
     }
 }

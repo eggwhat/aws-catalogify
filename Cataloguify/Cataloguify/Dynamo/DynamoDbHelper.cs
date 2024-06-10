@@ -11,8 +11,10 @@ namespace Cataloguify.Dynamo;
 
 public class DynamoDBHelper
 {
-    private readonly string _tableName = "users";
+    private readonly string _userTableName = "users";
+    private readonly string _imageInfoTableName = "imageinfos";
     private readonly string _emailIndex = "EmailIndex";
+    private readonly string _userIdIndex = "UserIndex";
     private readonly IAmazonDynamoDB amazonDynamoDBClient;
 
     public DynamoDBHelper(IAmazonDynamoDB amazonDynamoDBClient)
@@ -24,7 +26,7 @@ public class DynamoDBHelper
     {
         var queryRequest = new QueryRequest
         {
-            TableName = _tableName,
+            TableName = _userTableName,
             IndexName = _emailIndex,
             KeyConditionExpression = "Email = :v_Email",
             ExpressionAttributeValues = new Dictionary<string, AttributeValue>
@@ -46,6 +48,35 @@ public class DynamoDBHelper
                 Password = document["Password"].S
             };
             return user;
+        }
+
+        return null;
+    }
+
+    public async Task<IEnumerable<ImageInfo>> GetUserImagesAsync(string userId)
+    {
+        var queryRequest = new QueryRequest
+        {
+            TableName = _imageInfoTableName,
+            IndexName = _userIdIndex,
+            KeyConditionExpression = "UserId = :v_UserId",
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                { ":v_UserId", new AttributeValue { S = userId } }
+            }
+        };
+
+        var queryResponse = await amazonDynamoDBClient.QueryAsync(queryRequest);
+
+        if (queryResponse.Items.Count > 0)
+        {
+            var imagesInfos = queryResponse.Items.Select(x => new ImageInfo
+            {
+                ImageKey = new Guid(x["ImageKey"].S),
+                UserId = new Guid(x["UserId"].S),
+                Tags = x["Tags"].SS
+            });
+            return imagesInfos;
         }
 
         return null;
