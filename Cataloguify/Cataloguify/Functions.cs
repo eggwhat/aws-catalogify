@@ -21,6 +21,7 @@ using Cataloguify.Requests;
 using Cataloguify.Dynamo;
 using Amazon.Auth.AccessControlPolicy;
 using System.Text.Json;
+using Cataloguify.Entities;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -161,7 +162,7 @@ public class Functions
             new(ClaimTypes.Email, user.Email), new(ClaimTypes.Name, user.Username) };
         byte[] secret = Encoding.UTF8.GetBytes(key);
         var signingCredentials = new SigningCredentials(new SymmetricSecurityKey(secret), SecurityAlgorithms.HmacSha256);
-        var token = new JwtSecurityToken(claims: claims, expires: DateTime.UtcNow.AddMinutes(15), signingCredentials: signingCredentials);
+        var token = new JwtSecurityToken(claims: claims, expires: DateTime.UtcNow.AddMinutes(60), signingCredentials: signingCredentials);
         var tokenHandler = new JwtSecurityTokenHandler();
         return tokenHandler.WriteToken(token);
     }
@@ -301,10 +302,39 @@ public class Functions
     }
 
     [LambdaFunction]
-    [HttpApi(LambdaHttpMethod.Get, "images")]
-    public async Task GetImages(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
+    [HttpApi(LambdaHttpMethod.Post, "images")]
+    public async Task<APIGatewayProxyResponse> GetImages(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
+        var response = new APIGatewayProxyResponse
+        {
+            Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+        };
 
+        try
+        {
+            var authorizerContext = request.RequestContext.Authorizer;
+            var userId = ((JsonElement)authorizerContext.Lambda["UserId"]).Deserialize<string>();
+            var imagesInfos = await DynamoDBHelper.GetUserImagesAsync(userId);
+            var images = imagesInfos.Select(x => new Entities.Image
+            {
+                ImageKey = x.ImageKey,
+                UserId = x.UserId,
+                ImageUrl = GeneratePresignedURL(x.ImageKey.ToString(), 60),
+                Tags = x.Tags
+
+            });
+
+            response.Body = JsonConvert.SerializeObject(images);
+            response.StatusCode = 201;
+        }
+        catch (Exception ex)
+        {
+            context.Logger.LogLine($"Error: {ex.Message}");
+            response.StatusCode = 500;
+            response.Body = JsonConvert.SerializeObject(new { Message = "An error occurred during signup" });
+        }
+
+        return response;
     }
 
     private string GeneratePresignedURL(string objectKey, double duration)

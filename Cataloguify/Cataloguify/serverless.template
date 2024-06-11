@@ -226,7 +226,7 @@
       "Metadata": {
         "Tool": "Amazon.Lambda.Annotations",
         "SyncedEvents": [
-          "RootGet"
+          "RootPost"
         ]
       },
       "Properties": {
@@ -241,11 +241,11 @@
         "PackageType": "Zip",
         "Handler": "Cataloguify::Cataloguify.Functions_GetImages_Generated::GetImages",
         "Events": {
-          "RootGet": {
+          "RootPost": {
             "Type": "HttpApi",
             "Properties": {
               "Path": "images",
-              "Method": "GET"
+              "Method": "POST"
             }
           }
         }
