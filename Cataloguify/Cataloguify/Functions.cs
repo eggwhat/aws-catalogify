@@ -302,14 +302,14 @@ public class Functions
     }
 
     [LambdaFunction]
-    [HttpApi(LambdaHttpMethod.Post, "images")]
+    [HttpApi(LambdaHttpMethod.Post, "/images")]
     public async Task<APIGatewayProxyResponse> GetImages(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
         var response = new APIGatewayProxyResponse
         {
             Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
         };
-
+        Console.WriteLine("test");
         try
         {
             var authorizerContext = request.RequestContext.Authorizer;
@@ -321,20 +321,19 @@ public class Functions
                 UserId = x.UserId,
                 ImageUrl = GeneratePresignedURL(x.ImageKey.ToString(), 60),
                 Tags = x.Tags
-
             });
 
             response.Body = JsonConvert.SerializeObject(images);
-            response.StatusCode = 201;
+            response.StatusCode = 200;
         }
         catch (Exception ex)
         {
             context.Logger.LogLine($"Error: {ex.Message}");
             response.StatusCode = 500;
-            response.Body = JsonConvert.SerializeObject(new { Message = "An error occurred during signup" });
+            response.Body = JsonConvert.SerializeObject(new { Message = "An error occurred during retrieving images" });
         }
 
-        return response;
+        return response;    
     }
 
     private string GeneratePresignedURL(string objectKey, double duration)

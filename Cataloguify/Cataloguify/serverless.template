@@ -244,7 +244,7 @@
           "RootPost": {
             "Type": "HttpApi",
             "Properties": {
-              "Path": "images",
+              "Path": "/images",
               "Method": "POST"
             }
           }
