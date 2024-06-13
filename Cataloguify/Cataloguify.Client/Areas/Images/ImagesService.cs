@@ -9,6 +9,12 @@ public class ImagesService : IImagesService
     private readonly IHttpClient _httpClient;
     private readonly ILocalStorageService _localStorage;
 
+    public ImagesService(IHttpClient httpClient, ILocalStorageService localStorage)
+    {
+        _httpClient = httpClient;
+        _localStorage = localStorage;
+    }
+    
     public async Task<HttpResponse<ResponseDto<object>>> UploadImageAsync(string image)
     {
         _httpClient.SetAccessToken(await _localStorage.GetItemAsStringAsync("Token"));
