@@ -55,7 +55,21 @@
                     <RadzenPassword Name="password" Placeholder="Password" Style="width: 100%;" @bind-Value="signUpModel.Password"/>
                     <RadzenRequiredValidator Component="password" Text="Password is required"/>
 
-                    <RadzenButton ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Large" Text="Sign Up"/>
+                    @if (showProgressBar)
+                    {
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center">
+                            <RadzenProgressBarCircular ShowValue="true" ProgressBarStyle="ProgressBarStyle.Light"
+                                                       Mode="ProgressBarMode.Indeterminate"
+                                                       Size="ProgressBarCircularSize.Large">
+                                <Template>Signing Up</Template>
+                            </RadzenProgressBarCircular>
+                        </RadzenStack>
+                    }
+                    else
+                    {
+                        <RadzenButton ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary"
+                                      Size="ButtonSize.Large" Text="Sign Up"/>   
+                    }
                 </RadzenStack>
             </RadzenFieldset>
         </RadzenTemplateForm>
@@ -70,6 +84,7 @@
     private SignUpModel signUpModel = new SignUpModel();
     private bool showError = false;
     private string errorMessage = string.Empty;
+    private bool showProgressBar;
 
     private void OnAlertClose()
     {
@@ -79,6 +94,8 @@
     
     private async Task HandleSignUp()
     {
+        showProgressBar = true;
+        
         try
         {
             var response = await IdentityService.SignUpAsync(signUpModel.Email, signUpModel.Username, signUpModel.Password);
@@ -99,5 +116,7 @@
             errorMessage = $"Error during sign up: {ex.Message}";
             StateHasChanged(); 
         }
+        
+        showProgressBar = false;
     }
 }
