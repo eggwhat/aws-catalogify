@@ -1,6 +1,5 @@
 ﻿@using Blazored.LocalStorage
 @using Cataloguify.Client.Areas.Identity
-@using Cataloguify.Client.Models
 @inject IIdentityService IdentityService
 @inject ILocalStorageService LocalStorage;
 @inherits LayoutComponentBase
@@ -15,6 +14,10 @@
 
     <main>
         <div class="top-row px-4">
+            @if (_isUserAuthenticated)
+            {
+                <div class="nav-link" style="color: black">Hello, @_username!</div>
+            }
             <NavLink class="nav-link" href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</NavLink>
             @if (!_isUserAuthenticated)
             {
@@ -36,6 +39,7 @@
 @code {
 
     private bool _isUserAuthenticated;
+    private string _username;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
@@ -44,6 +48,7 @@
             {
                 _isUserAuthenticated = bool.Parse(isAuthenticated);
             }
+            _username = await LocalStorage.GetItemAsStringAsync("Username");
             StateHasChanged();
         }
     }

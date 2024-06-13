@@ -38,12 +38,15 @@ public class IdentityService : IIdentityService
         var response = await _httpClient.PostAsync<object, string>("generate-token", new { email, password });
         Token = response.Content;
         await _localStorage.SetItemAsStringAsync("Token", Token);
-
+        
         var jwtToken = _jwtHandler.ReadJwtToken(Token);
         var payload = jwtToken.Payload;
-        Email = payload.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
-        Username = payload.Claims.FirstOrDefault(c => c.Type == "username")?.Value;
+        Email = payload.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value;
+        Username = payload.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")?.Value;
         IsAuthenticated = true;
+
+        await _localStorage.SetItemAsStringAsync("Email", email ?? string.Empty);
+        await _localStorage.SetItemAsStringAsync("Username", Username ?? string.Empty);
         await _localStorage.SetItemAsStringAsync("IsAuthenticated", IsAuthenticated.ToString());
         
         return response;
@@ -56,6 +59,8 @@ public class IdentityService : IIdentityService
         Email = null;
         Username = null;
         IsAuthenticated = false;
+        await _localStorage.RemoveItemAsync("Email");
+        await _localStorage.RemoveItemAsync("Username");
         await _localStorage.SetItemAsStringAsync("IsAuthenticated", IsAuthenticated.ToString());
         _navigationManager.NavigateTo("signin", forceLoad: true);
     }
