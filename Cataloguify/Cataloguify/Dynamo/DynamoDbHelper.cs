@@ -4,6 +4,7 @@ using Amazon.DynamoDBv2.Model;
 using Cataloguify.Documents;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net.NetworkInformation;
 using System.Threading.Tasks;
 
@@ -74,8 +75,9 @@ public class DynamoDBHelper
             {
                 ImageKey = new Guid(x["ImageKey"].S),
                 UserId = new Guid(x["UserId"].S),
-                Tags = x["Tags"].SS
-            });
+                Tags = x["Tags"].SS,
+                UploadedAt = DateTime.ParseExact(x["UploadedAt"].S, "yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal)
+        });
             return imagesInfos;
         }
 

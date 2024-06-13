@@ -321,6 +321,8 @@ public class Functions
             {
                 filterImages = imagesInfos.Where(x => x.Tags.Where(tag => searchImageRequest.Tags.Contains(tag)).Any());
             }
+            filterImages = searchImageRequest.SortOrder == "des" ? filterImages.OrderByDescending(x => x.UploadedAt).ThenBy(x => x.ImageKey)
+                                                                 : filterImages.OrderBy(x => x.UploadedAt).ThenBy(x => x.ImageKey);
             filterImages = filterImages.Skip((searchImageRequest.Page - 1) * searchImageRequest.Results).Take(searchImageRequest.Results);
 
 
@@ -329,7 +331,8 @@ public class Functions
                 ImageKey = x.ImageKey,
                 UserId = x.UserId,
                 ImageUrl = GeneratePresignedURL(x.ImageKey.ToString(), 60),
-                Tags = x.Tags
+                Tags = x.Tags,
+                UploadedAt = x.UploadedAt,
             });
 
             response.Body = JsonConvert.SerializeObject(images);

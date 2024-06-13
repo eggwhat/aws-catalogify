@@ -11,5 +11,6 @@ namespace Cataloguify.Requests
         public List<string> Tags { get; set; }
         public int Page { get; set; }
         public int Results { get; set; }
+        public string SortOrder { get; set; }
     }
 }
