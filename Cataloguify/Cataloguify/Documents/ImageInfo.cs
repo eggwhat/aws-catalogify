@@ -18,5 +18,8 @@ namespace Cataloguify.Documents
 
         [DynamoDBProperty]
         public List<string> Tags { get; set; }
+
+        [DynamoDBProperty]
+        public DateTime UploadedAt { get; set; }
     }
 }

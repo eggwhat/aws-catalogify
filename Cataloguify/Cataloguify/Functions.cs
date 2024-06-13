@@ -121,7 +121,6 @@ public class Functions
 
             var signUpRequest = JsonConvert.DeserializeObject<SignUpRequest>(request.Body);
 
-            // Validate user input (e.g., check if email, username, and password are not empty)
             if (string.IsNullOrEmpty(signUpRequest.Username) ||
                 string.IsNullOrEmpty(signUpRequest.Email) ||
                 string.IsNullOrEmpty(signUpRequest.Password))
@@ -248,7 +247,7 @@ public class Functions
             var imageRequest = JsonConvert.DeserializeObject<ImageRequest>(request.Body);
             byte[] imageBytes = Convert.FromBase64String(imageRequest.Image);
 
-            // Detect faces in the image
+            // Detect labels in the image
             DetectLabelsRequest detectLabelsRequest = new DetectLabelsRequest
             {
                 Image = new Amazon.Rekognition.Model.Image { Bytes = new MemoryStream(imageBytes) },
@@ -277,12 +276,13 @@ public class Functions
             {
                 ImageKey = s3Key,
                 UserId = new Guid(userId),
-                Tags = detectLabelsResponse.Labels.Select(x => x.Name).ToList()
+                Tags = detectLabelsResponse.Labels.Select(x => x.Name).ToList(),
+                UploadedAt = DateTime.UtcNow,
             };
             await DynamoDBContext.SaveAsync(imageInfo);
 
             // Return response
-                return new APIGatewayProxyResponse
+            return new APIGatewayProxyResponse
             {
                 StatusCode = 200,
                 Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" } }
@@ -321,6 +321,7 @@ public class Functions
             {
                 filterImages = imagesInfos.Where(x => x.Tags.Where(tag => searchImageRequest.Tags.Contains(tag)).Any());
             }
+            filterImages = filterImages.Skip((searchImageRequest.Page - 1) * searchImageRequest.Results).Take(searchImageRequest.Results);
 
 
             var images = filterImages.Select(x => new Entities.Image

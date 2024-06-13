@@ -6,4 +6,5 @@ public class Image
     public Guid UserId { get; set; }
     public string ImageUrl { get; set; }
     public List<string> Tags { get; set; }
+    public DateTime UploadetAt { get; set; }
 }
