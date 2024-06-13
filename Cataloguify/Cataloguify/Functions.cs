@@ -309,13 +309,21 @@ public class Functions
         {
             Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
         };
-        Console.WriteLine("test");
         try
         {
             var authorizerContext = request.RequestContext.Authorizer;
             var userId = ((JsonElement)authorizerContext.Lambda["UserId"]).Deserialize<string>();
             var imagesInfos = await DynamoDBHelper.GetUserImagesAsync(userId);
-            var images = imagesInfos.Select(x => new Entities.Image
+
+            var searchImageRequest = JsonConvert.DeserializeObject<SearchImagesRequest>(request.Body);
+            var filterImages = imagesInfos;
+            if(searchImageRequest.Tags.Count > 0)
+            {
+                filterImages = imagesInfos.Where(x => x.Tags.Where(tag => searchImageRequest.Tags.Contains(tag)).Any());
+            }
+
+
+            var images = filterImages.Select(x => new Entities.Image
             {
                 ImageKey = x.ImageKey,
                 UserId = x.UserId,
