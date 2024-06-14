@@ -1,0 +1,55 @@
+@page "/upload"
+@using Cataloguify.Client.Areas.Images
+@inject IImagesService ImagesService
+@inject ISnackbar Snackbar
+@using MudBlazor
+
+<MudPaper Class="pa-4">
+    <MudText Typo="Typo.h5">Upload Image</MudText>
+    <MudFileUpload FilesChanged="@((IEnumerable<IBrowserFile> files) => OnFilesChanged(files))"
+>
+        <ButtonTemplate>
+            <MudButton HtmlTag="label"
+                       Variant="@MudBlazor.Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.CloudUpload"
+                       For="@context.Id">
+                Upload Files
+            </MudButton>
+        </ButtonTemplate>
+    </MudFileUpload>
+</MudPaper>
+
+@code {
+    private async Task OnFilesChanged(IEnumerable<IBrowserFile> files)
+    {
+        const int maxAllowedSize = 10 * 1024 * 1024; // 10 MB limit
+        foreach (var file in files)
+        {
+            if (file.Size > maxAllowedSize)
+            {
+                Snackbar.Add("File size should not exceed 10 MB.", Severity.Error);
+                continue;
+            }
+
+            try
+            {
+                using (var stream = file.OpenReadStream(maxAllowedSize))
+                {
+                    var buffer = new byte[file.Size];
+                    await stream.ReadAsync(buffer, 0, buffer.Length);
+                    string base64Image = Convert.ToBase64String(buffer);
+                    var response = await ImagesService.UploadImageAsync(base64Image);
+
+                  
+                        Snackbar.Add("Image uploaded successfully!", Severity.Success);
+                    
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"An error occurred: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}
