@@ -21,11 +21,11 @@ public class ImagesService : IImagesService
         return await _httpClient.PostAsync<object, object>("upload-image", new { image });
     }
 
-    public async Task<HttpResponse<object>> SearchImagesAsync(IEnumerable<string> tags, int page,
+    public async Task<HttpResponse<IEnumerable<ImageDto>>> SearchImagesAsync(IEnumerable<string> tags, int page,
         int results, string sortOrder)
     {
         _httpClient.SetAccessToken(await _localStorage.GetItemAsStringAsync("Token"));
-        return await _httpClient.PostAsync<object, object>("images",
+        return await _httpClient.PostAsync<object, IEnumerable<ImageDto>>("images",
             new { tags, page, results, sortOrder });
     }
 }
