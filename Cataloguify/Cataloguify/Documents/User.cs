@@ -2,7 +2,7 @@ using Amazon.DynamoDBv2.DataModel;
 
 namespace Cataloguify.Documents
 {
-    [DynamoDBTable("users")]
+    [DynamoDBTable("Users")]
     public class User
     {
         [DynamoDBHashKey("UserId")]

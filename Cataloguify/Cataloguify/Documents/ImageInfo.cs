@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Cataloguify.Documents
 {
-    [DynamoDBTable("imageinfos")]
+    [DynamoDBTable("Imageinfos")]
     public class ImageInfo
     {
         [DynamoDBHashKey] 
