@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using Blazored.LocalStorage;
+using Cataloguify.Client.DTO;
 using Microsoft.AspNetCore.Components;
 using Cataloguify.Client.HttpClients;
 
@@ -32,15 +33,15 @@ public class IdentityService : IIdentityService
             new { email, username, password });
     }
 
-    public async Task<HttpResponse<string>> SignInAsync(string email, string password)
+    public async Task<HttpResponse<TokenDto>> SignInAsync(string email, string password)
     {
-        var response = await _httpClient.PostAsync<object, string>("generate-token", new { email, password });
+        var response = await _httpClient.PostAsync<object, TokenDto>("generate-token", new { email, password });
         if (response.ErrorMessage != null)
         {
             return response;
         }
 
-        Token = response.Content;
+        Token = response.Content.AccessToken;
         await _localStorage.SetItemAsStringAsync("Token", Token);
         
         var jwtToken = _jwtHandler.ReadJwtToken(Token);
