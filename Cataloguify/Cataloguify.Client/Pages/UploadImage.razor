@@ -6,8 +6,7 @@
 
 <MudPaper Class="pa-4">
     <MudText Typo="Typo.h5">Upload Image</MudText>
-    <MudFileUpload FilesChanged="@((IEnumerable<IBrowserFile> files) => OnFilesChanged(files))"
->
+    <MudFileUpload FilesChanged="@((IEnumerable<IBrowserFile> files) => OnFilesChanged(files))">
         <ButtonTemplate>
             <MudButton HtmlTag="label"
                        Variant="@MudBlazor.Variant.Filled"
