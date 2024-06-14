@@ -100,14 +100,14 @@
         try
         {
             var response = await IdentityService.SignInAsync(signInModel.Email, signInModel.Password);
-            if (!string.IsNullOrEmpty(response.Content))
+            if (response.ErrorMessage == null)
             {
                 NavigationManager.NavigateTo("/", true);
             }
             else
             {
                 showError = true;
-                errorMessage = $"Error during sign in: {response.ErrorMessage.Reason}";
+                errorMessage = $"Error during sign in: {response.ErrorMessage.Message}";
                 StateHasChanged();
             }
         }

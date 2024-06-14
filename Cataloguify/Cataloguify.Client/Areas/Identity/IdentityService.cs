@@ -30,12 +30,16 @@ public class IdentityService : IIdentityService
     {
         return await _httpClient.PostAsync<object, object>("sign-up",
             new { email, username, password });
-
     }
 
     public async Task<HttpResponse<string>> SignInAsync(string email, string password)
     {
         var response = await _httpClient.PostAsync<object, string>("generate-token", new { email, password });
+        if (response.ErrorMessage != null)
+        {
+            return response;
+        }
+
         Token = response.Content;
         await _localStorage.SetItemAsStringAsync("Token", Token);
         

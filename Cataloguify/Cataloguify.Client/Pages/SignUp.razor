@@ -106,7 +106,7 @@
             else
             {
                 showError = true;
-                errorMessage = $"Error during sign up: {response.ErrorMessage.Reason}";
+                errorMessage = $"Error during sign up: {response.ErrorMessage.Message}";
                 StateHasChanged();
             }
         }
