@@ -58,7 +58,6 @@ public class Functions
         this.AmazonDynamoDBClient = new AmazonDynamoDBClient();
         this.DynamoDBContext = new DynamoDBContext(AmazonDynamoDBClient);
         this.DynamoDBHelper = new DynamoDBHelper(this.AmazonDynamoDBClient);
-        Environment.SetEnvironmentVariable("LAMBDA_NET_SERIALIZER_DEBUG", "true");
     }
 
 
@@ -417,8 +416,6 @@ public class Functions
             // Get user ID from authorizer context
             var authorizerContext = request.RequestContext.Authorizer;
             var userId = ((JsonElement)authorizerContext.Lambda["UserId"]).Deserialize<string>();
-            Console.WriteLine($"Requst 1: {request.RawQueryString}");
-            Console.WriteLine($"Requst 2: {request.QueryStringParameters}");
 
 
             // Check if the imageKey parameter exists and is not null or empty
@@ -438,7 +435,7 @@ public class Functions
             await S3Client.DeleteObjectAsync(deleteObjectRequest);
 
             // Delete the image record from DynamoDB
-            var imageInfo = await DynamoDBContext.LoadAsync<ImageInfo>(imageKey, new Guid(userId));
+            var imageInfo = await DynamoDBContext.LoadAsync<ImageInfo>(new Guid(imageKey), new Guid(userId));
             if (imageInfo != null)
             {
                 await DynamoDBContext.DeleteAsync(imageInfo);
