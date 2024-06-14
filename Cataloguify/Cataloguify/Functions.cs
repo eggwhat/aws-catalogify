@@ -356,6 +356,7 @@ public class Functions
             }
             filterImages = searchImageRequest.SortOrder == "des" ? filterImages.OrderByDescending(x => x.UploadedAt).ThenBy(x => x.ImageKey)
                                                                  : filterImages.OrderBy(x => x.UploadedAt).ThenBy(x => x.ImageKey);
+            var totalPages = (int)Math.Ceiling((decimal)filterImages.Count() / searchImageRequest.Results);
             filterImages = filterImages.Skip((searchImageRequest.Page - 1) * searchImageRequest.Results).Take(searchImageRequest.Results);
 
 
@@ -368,7 +369,15 @@ public class Functions
                 UploadedAt = x.UploadedAt,
             });
 
-            response.Body = JsonConvert.SerializeObject(images);
+            var responseBody = new PagedResponse<IEnumerable<Entities.Image>>
+            {
+                Page = searchImageRequest.Page,
+                Results = images.Count(),
+                TotalPages = totalPages,
+                Content = images
+            };
+
+            response.Body = JsonConvert.SerializeObject(responseBody);
             response.StatusCode = 200;
         }
         catch (Exception ex)

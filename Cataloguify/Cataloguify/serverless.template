@@ -63,7 +63,7 @@
         },
         "AuthorizerType": "REQUEST",
         "AuthorizerCredentialsArn": {
-            "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/LabRole"
+          "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/LabRole"
         },
         "Name": "LambdaAuthorizer",
         "AuthorizerUri": {
