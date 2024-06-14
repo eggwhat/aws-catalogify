@@ -33,28 +33,47 @@ public class IdentityService : IIdentityService
     }
 
     public async Task<HttpResponse<string>> SignInAsync(string email, string password)
+{
+    var response = await _httpClient.PostAsync<object, string>("generate-token", new { email, password });
+    
+    if (response.ErrorMessage != null)
     {
-        var response = await _httpClient.PostAsync<object, string>("generate-token", new { email, password });
-        if (response.ErrorMessage != null)
+        Console.WriteLine($"Error during sign in: {response.ErrorMessage}");
+        return response;
+    }
+
+    try
+    {
+        Token = response.Content;
+        Console.WriteLine($"Received Token: {Token}");
+        
+        await _localStorage.SetItemAsStringAsync("Token", Token);
+        var jwtToken = _jwtHandler.ReadJwtToken(Token);
+        var payload = jwtToken.Payload;
+        
+        Email = payload.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Email)?.Value;
+        Username = payload.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Name)?.Value;
+        
+        if (Email == null || Username == null)
         {
+            Console.WriteLine("Error: Missing claims in token.");
             return response;
         }
 
-        Token = response.Content;
-        await _localStorage.SetItemAsStringAsync("Token", Token);
-        
-        var jwtToken = _jwtHandler.ReadJwtToken(Token);
-        var payload = jwtToken.Payload;
-        Email = payload.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value;
-        Username = payload.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")?.Value;
         IsAuthenticated = true;
-
-        await _localStorage.SetItemAsStringAsync("Email", email ?? string.Empty);
-        await _localStorage.SetItemAsStringAsync("Username", Username ?? string.Empty);
-        await _localStorage.SetItemAsStringAsync("IsAuthenticated", IsAuthenticated.ToString());
         
+        await _localStorage.SetItemAsStringAsync("Email", Email);
+        await _localStorage.SetItemAsStringAsync("Username", Username);
+        await _localStorage.SetItemAsStringAsync("IsAuthenticated", IsAuthenticated.ToString());
+
         return response;
     }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error parsing token: {ex.Message}");
+        return response;
+    }
+}
 
     public async Task Logout()
     {
