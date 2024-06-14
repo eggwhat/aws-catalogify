@@ -221,7 +221,7 @@ public class Functions
                 new APIGatewayCustomAuthorizerPolicy.IAMPolicyStatement()
                 {
                     Effect = effect,
-                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:m6d1s7fhgk/*/*" },
+                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:99tbjeqx2b/*/*" },
                     Action = new HashSet<string> { "execute-api:Invoke" }
                 }
             }
