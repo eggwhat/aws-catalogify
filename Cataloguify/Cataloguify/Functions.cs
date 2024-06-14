@@ -58,6 +58,7 @@ public class Functions
         this.AmazonDynamoDBClient = new AmazonDynamoDBClient();
         this.DynamoDBContext = new DynamoDBContext(AmazonDynamoDBClient);
         this.DynamoDBHelper = new DynamoDBHelper(this.AmazonDynamoDBClient);
+        Environment.SetEnvironmentVariable("LAMBDA_NET_SERIALIZER_DEBUG", "true");
     }
 
 
@@ -89,16 +90,44 @@ public class Functions
 
     [LambdaFunction]
     [HttpApi(LambdaHttpMethod.Post, "/generate-token")]
-    public async Task<string> GenerateTokenAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
+    public async Task<APIGatewayProxyResponse> GenerateTokenAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
-        var tokenRequest = JsonConvert.DeserializeObject<Documents.User>(request.Body);
+        var response = new APIGatewayProxyResponse
+        {
+            Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+        };
 
-        //check if user exists in ddb
-        var user = await DynamoDBHelper.GetUserByEmailAsync(tokenRequest?.Email);
-        if (user == null) throw new Exception("User Not Found!");
-        if (user.Password != tokenRequest.Password) throw new Exception("Invalid Credentials!");
-        var token = GenerateJWT(user);
-        return token;
+        try
+        {
+            var tokenRequest = JsonConvert.DeserializeObject<Documents.User>(request.Body);
+
+            //check if user exists in ddb
+            var user = await DynamoDBHelper.GetUserByEmailAsync(tokenRequest?.Email);
+            if (user == null)
+            {
+                response.StatusCode = 400;
+                response.Body = JsonConvert.SerializeObject(new { Message = "User does not exist!" });
+                return response;
+            }
+
+            if (user.Password != tokenRequest.Password)
+            {
+                response.StatusCode = 400;
+                response.Body = JsonConvert.SerializeObject(new { Message = "Invalid credentials!" });
+                return response;
+            }
+            var token = GenerateJWT(user);
+            response.StatusCode = 200;
+            response.Body = JsonConvert.SerializeObject(new { AccessToken = token });
+        }
+        catch (Exception ex)
+        {
+            context.Logger.LogLine($"Error: {ex.Message}");
+            response.StatusCode = 500;
+            response.Body = JsonConvert.SerializeObject(new { Message = "An error occurred during signup" });
+        }
+
+        return response;
     }
 
     [LambdaFunction]
@@ -131,7 +160,12 @@ public class Functions
             }
 
             var existingUser = await DynamoDBHelper.GetUserByEmailAsync(signUpRequest.Email);
-            if (existingUser != null) throw new Exception("User Already Exists!");
+            if (existingUser != null)
+            {
+                response.StatusCode = 400;
+                response.Body = JsonConvert.SerializeObject(new { Message = "User already signed up" });
+                return response;
+            }
 
             var user = new Documents.User
             {
@@ -368,4 +402,60 @@ public class Functions
 
         return urlString;
     }
+
+    [LambdaFunction]
+    [HttpApi(LambdaHttpMethod.Delete, "/images")]
+    public async Task<APIGatewayProxyResponse> DeleteImage(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
+    {
+        var response = new APIGatewayProxyResponse
+        {
+            Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+        };
+
+        try
+        {
+            // Get user ID from authorizer context
+            var authorizerContext = request.RequestContext.Authorizer;
+            var userId = ((JsonElement)authorizerContext.Lambda["UserId"]).Deserialize<string>();
+            Console.WriteLine($"Requst 1: {request.RawQueryString}");
+            Console.WriteLine($"Requst 2: {request.QueryStringParameters}");
+
+
+            // Check if the imageKey parameter exists and is not null or empty
+            if (request.QueryStringParameters == null || !request.QueryStringParameters.TryGetValue("imageKey", out string imageKey) || string.IsNullOrEmpty(imageKey))
+            {
+                response.StatusCode = 400;
+                response.Body = JsonConvert.SerializeObject(new { Message = "Missing imageKey parameter" });
+                return response;
+            }
+
+            // Delete the image from S3
+            var deleteObjectRequest = new Amazon.S3.Model.DeleteObjectRequest
+            {
+                BucketName = S3_BUCKET_NAME,
+                Key = imageKey
+            };
+            await S3Client.DeleteObjectAsync(deleteObjectRequest);
+
+            // Delete the image record from DynamoDB
+            var imageInfo = await DynamoDBContext.LoadAsync<ImageInfo>(imageKey, new Guid(userId));
+            if (imageInfo != null)
+            {
+                await DynamoDBContext.DeleteAsync(imageInfo);
+            }
+
+            // Return success response
+            response.StatusCode = 200;
+            response.Body = JsonConvert.SerializeObject(new { Message = "Image deleted successfully" });
+        }
+        catch (Exception ex)
+        {
+            context.Logger.LogLine($"Error: {ex.Message}");
+            response.StatusCode = 500;
+            response.Body = JsonConvert.SerializeObject(new { Message = "An error occurred while deleting the image" });
+        }
+
+        return response;
+    }
+
 }

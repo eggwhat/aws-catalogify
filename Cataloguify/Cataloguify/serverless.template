@@ -250,6 +250,36 @@
           }
         }
       }
+    },
+    "CataloguifyFunctionsDeleteImageGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations",
+        "SyncedEvents": [
+          "RootDelete"
+        ]
+      },
+      "Properties": {
+        "Runtime": "dotnet8",
+        "CodeUri": ".",
+        "Role": "arn:aws:iam::885422015476:role/LabRole",
+        "MemorySize": 256,
+        "Timeout": 30,
+        "Policies": [
+          "LabRole"
+        ],
+        "PackageType": "Zip",
+        "Handler": "Cataloguify::Cataloguify.Functions_DeleteImage_Generated::DeleteImage",
+        "Events": {
+          "RootDelete": {
+            "Type": "HttpApi",
+            "Properties": {
+              "Path": "/images",
+              "Method": "DELETE"
+            }
+          }
+        }
+      }
     }
   },
   "Outputs": {
