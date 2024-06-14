@@ -11,7 +11,6 @@ using System.Security.Claims;
 using System.Text;
 using Newtonsoft.Json;
 using Amazon.DynamoDBv2.Model;
-using static System.Net.Mime.MediaTypeNames;
 using Amazon.S3;
 using Amazon.Rekognition;
 using Amazon.Rekognition.Model;
@@ -21,6 +20,8 @@ using Cataloguify.Documents;
 using Cataloguify.Requests;
 using Cataloguify.Dynamo;
 using Amazon.Auth.AccessControlPolicy;
+using System.Text.Json;
+using Cataloguify.Entities;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -57,25 +58,7 @@ public class Functions
         this.AmazonDynamoDBClient = new AmazonDynamoDBClient();
         this.DynamoDBContext = new DynamoDBContext(AmazonDynamoDBClient);
         this.DynamoDBHelper = new DynamoDBHelper(this.AmazonDynamoDBClient);
-
-        var environmentMinConfidence = System.Environment.GetEnvironmentVariable(MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME);
-        if (!string.IsNullOrWhiteSpace(environmentMinConfidence))
-        {
-            float value;
-            if (float.TryParse(environmentMinConfidence, out value))
-            {
-                this.MinConfidence = value;
-                Console.WriteLine($"Setting minimum confidence to {this.MinConfidence}");
-            }
-            else
-            {
-                Console.WriteLine($"Failed to parse value {environmentMinConfidence} for minimum confidence. Reverting back to default of {this.MinConfidence}");
-            }
-        }
-        else
-        {
-            Console.WriteLine($"Using default minimum confidence of {this.MinConfidence}");
-        }
+        Environment.SetEnvironmentVariable("LAMBDA_NET_SERIALIZER_DEBUG", "true");
     }
 
 
@@ -107,16 +90,44 @@ public class Functions
 
     [LambdaFunction]
     [HttpApi(LambdaHttpMethod.Post, "/generate-token")]
-    public async Task<string> GenerateTokenAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
+    public async Task<APIGatewayProxyResponse> GenerateTokenAsync(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
-        var tokenRequest = JsonConvert.DeserializeObject<Documents.User>(request.Body);
+        var response = new APIGatewayProxyResponse
+        {
+            Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+        };
 
-        //check if user exists in ddb
-        var user = await DynamoDBHelper.GetUserByEmailAsync(tokenRequest?.Email);
-        if (user == null) throw new Exception("User Not Found!");
-        if (user.Password != tokenRequest.Password) throw new Exception("Invalid Credentials!");
-        var token = GenerateJWT(user);
-        return token;
+        try
+        {
+            var tokenRequest = JsonConvert.DeserializeObject<Documents.User>(request.Body);
+
+            //check if user exists in ddb
+            var user = await DynamoDBHelper.GetUserByEmailAsync(tokenRequest?.Email);
+            if (user == null)
+            {
+                response.StatusCode = 400;
+                response.Body = JsonConvert.SerializeObject(new { Message = "User does not exist!" });
+                return response;
+            }
+
+            if (user.Password != tokenRequest.Password)
+            {
+                response.StatusCode = 400;
+                response.Body = JsonConvert.SerializeObject(new { Message = "Invalid credentials!" });
+                return response;
+            }
+            var token = GenerateJWT(user);
+            response.StatusCode = 200;
+            response.Body = JsonConvert.SerializeObject(new { AccessToken = token });
+        }
+        catch (Exception ex)
+        {
+            context.Logger.LogLine($"Error: {ex.Message}");
+            response.StatusCode = 500;
+            response.Body = JsonConvert.SerializeObject(new { Message = "An error occurred during signup" });
+        }
+
+        return response;
     }
 
     [LambdaFunction]
@@ -139,7 +150,6 @@ public class Functions
 
             var signUpRequest = JsonConvert.DeserializeObject<SignUpRequest>(request.Body);
 
-            // Validate user input (e.g., check if email, username, and password are not empty)
             if (string.IsNullOrEmpty(signUpRequest.Username) ||
                 string.IsNullOrEmpty(signUpRequest.Email) ||
                 string.IsNullOrEmpty(signUpRequest.Password))
@@ -150,7 +160,12 @@ public class Functions
             }
 
             var existingUser = await DynamoDBHelper.GetUserByEmailAsync(signUpRequest.Email);
-            if (existingUser != null) throw new Exception("User Already Exists!");
+            if (existingUser != null)
+            {
+                response.StatusCode = 400;
+                response.Body = JsonConvert.SerializeObject(new { Message = "User already signed up" });
+                return response;
+            }
 
             var user = new Documents.User
             {
@@ -180,7 +195,7 @@ public class Functions
             new(ClaimTypes.Email, user.Email), new(ClaimTypes.Name, user.Username) };
         byte[] secret = Encoding.UTF8.GetBytes(key);
         var signingCredentials = new SigningCredentials(new SymmetricSecurityKey(secret), SecurityAlgorithms.HmacSha256);
-        var token = new JwtSecurityToken(claims: claims, expires: DateTime.UtcNow.AddMinutes(15), signingCredentials: signingCredentials);
+        var token = new JwtSecurityToken(claims: claims, expires: DateTime.UtcNow.AddMinutes(60), signingCredentials: signingCredentials);
         var tokenHandler = new JwtSecurityTokenHandler();
         return tokenHandler.WriteToken(token);
     }
@@ -192,13 +207,13 @@ public class Functions
         var claimsPrincipal = GetClaimsPrincipal(authToken);
         var effect = claimsPrincipal == null ? "Deny" : "Allow";
         var principalId = claimsPrincipal == null ? "401" : claimsPrincipal?.FindFirst(ClaimTypes.Name)?.Value;
-        string email = claimsPrincipal.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value;
+        string userId = claimsPrincipal?.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
         return new APIGatewayCustomAuthorizerResponse()
         {
             PrincipalID = principalId,
             Context = new APIGatewayCustomAuthorizerContextOutput()
             {
-                {"Email", email}
+                {"UserId", userId}
             },
             PolicyDocument = new APIGatewayCustomAuthorizerPolicy()
             {
@@ -239,50 +254,71 @@ public class Functions
     [HttpApi(LambdaHttpMethod.Post, "/upload-image")]
     public async Task<APIGatewayProxyResponse> UploadImage(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
+        var environmentMinConfidence = System.Environment.GetEnvironmentVariable(MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME);
+        if (!string.IsNullOrWhiteSpace(environmentMinConfidence))
+        {
+            float value;
+            if (float.TryParse(environmentMinConfidence, out value))
+            {
+                this.MinConfidence = value;
+                Console.WriteLine($"Setting minimum confidence to {this.MinConfidence}");
+            }
+            else
+            {
+                Console.WriteLine($"Failed to parse value {environmentMinConfidence} for minimum confidence. Reverting back to default of {this.MinConfidence}");
+            }
+        }
+        else
+        {
+            Console.WriteLine($"Using default minimum confidence of {this.MinConfidence}");
+        }
+
         try
         {
             var authorizerContext = request.RequestContext.Authorizer;
-            var email = authorizerContext.Lambda["Email"];
-            Console.WriteLine($"Email: {email}");
+            var userId = ((JsonElement)authorizerContext.Lambda["UserId"]).Deserialize<string>();
             
             var imageRequest = JsonConvert.DeserializeObject<ImageRequest>(request.Body);
             byte[] imageBytes = Convert.FromBase64String(imageRequest.Image);
 
-
-            // Detect faces in the image
-            DetectFacesRequest detectFacesRequest = new DetectFacesRequest
+            // Detect labels in the image
+            DetectLabelsRequest detectLabelsRequest = new DetectLabelsRequest
             {
-                Image = new Amazon.Rekognition.Model.Image { Bytes = new MemoryStream(imageBytes) }
+                Image = new Amazon.Rekognition.Model.Image { Bytes = new MemoryStream(imageBytes) },
+                MaxLabels = 10,
+                MinConfidence = 75F
             };
 
-            DetectFacesResponse detectFacesResponse = await RekognitionClient.DetectFacesAsync(detectFacesRequest);
+            DetectLabelsResponse detectLabelsResponse = await RekognitionClient.DetectLabelsAsync(detectLabelsRequest);
+            foreach (Label label in detectLabelsResponse.Labels)
+                Console.WriteLine("{0}: {1}", label.Name, label.Confidence);
 
             // Upload the image to S3
-            string s3Key = Guid.NewGuid().ToString(); // Generate a unique key for the S3 object
+            var s3Key = Guid.NewGuid(); // Generate a unique key for the S3 object
             using (var s3Client = S3Client)
             {
                 PutObjectRequest s3Request = new PutObjectRequest
                 {
                     BucketName = S3_BUCKET_NAME,
-                    Key = s3Key,
+                    Key = s3Key.ToString(),
                     InputStream = new MemoryStream(imageBytes)
                 };
                 PutObjectResponse s3Response = await s3Client.PutObjectAsync(s3Request);
             }
 
-
-            // Process the response
-            StringBuilder responseBuilder = new StringBuilder();
-            foreach (FaceDetail faceDetail in detectFacesResponse.FaceDetails)
+            var imageInfo = new ImageInfo
             {
-                responseBuilder.AppendLine($"Detected face with confidence: {faceDetail.Confidence}");
-            }
+                ImageKey = s3Key,
+                UserId = new Guid(userId),
+                Tags = detectLabelsResponse.Labels.Select(x => x.Name).ToList(),
+                UploadedAt = DateTime.UtcNow,
+            };
+            await DynamoDBContext.SaveAsync(imageInfo);
 
             // Return response
             return new APIGatewayProxyResponse
             {
                 StatusCode = 200,
-                Body = responseBuilder.ToString(),
                 Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" } }
             };
         }
@@ -298,4 +334,128 @@ public class Functions
             };
         }
     }
+
+    [LambdaFunction]
+    [HttpApi(LambdaHttpMethod.Post, "/images")]
+    public async Task<APIGatewayProxyResponse> GetImages(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
+    {
+        var response = new APIGatewayProxyResponse
+        {
+            Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+        };
+        try
+        {
+            var authorizerContext = request.RequestContext.Authorizer;
+            var userId = ((JsonElement)authorizerContext.Lambda["UserId"]).Deserialize<string>();
+            var imagesInfos = await DynamoDBHelper.GetUserImagesAsync(userId);
+
+            var searchImageRequest = JsonConvert.DeserializeObject<SearchImagesRequest>(request.Body);
+            var filterImages = imagesInfos;
+            if(searchImageRequest.Tags.Count > 0)
+            {
+                filterImages = imagesInfos.Where(x => x.Tags.Where(tag => searchImageRequest.Tags.Contains(tag)).Any());
+            }
+            filterImages = searchImageRequest.SortOrder == "des" ? filterImages.OrderByDescending(x => x.UploadedAt).ThenBy(x => x.ImageKey)
+                                                                 : filterImages.OrderBy(x => x.UploadedAt).ThenBy(x => x.ImageKey);
+            filterImages = filterImages.Skip((searchImageRequest.Page - 1) * searchImageRequest.Results).Take(searchImageRequest.Results);
+
+
+            var images = filterImages.Select(x => new Entities.Image
+            {
+                ImageKey = x.ImageKey,
+                UserId = x.UserId,
+                ImageUrl = GeneratePresignedURL(x.ImageKey.ToString(), 60),
+                Tags = x.Tags,
+                UploadedAt = x.UploadedAt,
+            });
+
+            response.Body = JsonConvert.SerializeObject(images);
+            response.StatusCode = 200;
+        }
+        catch (Exception ex)
+        {
+            context.Logger.LogLine($"Error: {ex.Message}");
+            response.StatusCode = 500;
+            response.Body = JsonConvert.SerializeObject(new { Message = "An error occurred during retrieving images" });
+        }
+
+        return response;    
+    }
+
+    private string GeneratePresignedURL(string objectKey, double duration)
+    {
+        string urlString = string.Empty;
+        try
+        {
+            var request = new GetPreSignedUrlRequest()
+            {
+                BucketName = S3_BUCKET_NAME,
+                Key = objectKey,
+                Expires = DateTime.UtcNow.AddHours(duration),
+            };
+            urlString = S3Client.GetPreSignedURL(request);
+        }
+        catch (AmazonS3Exception ex)
+        {
+            Console.WriteLine($"Error:'{ex.Message}'");
+        }
+
+        return urlString;
+    }
+
+    [LambdaFunction]
+    [HttpApi(LambdaHttpMethod.Delete, "/images")]
+    public async Task<APIGatewayProxyResponse> DeleteImage(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
+    {
+        var response = new APIGatewayProxyResponse
+        {
+            Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+        };
+
+        try
+        {
+            // Get user ID from authorizer context
+            var authorizerContext = request.RequestContext.Authorizer;
+            var userId = ((JsonElement)authorizerContext.Lambda["UserId"]).Deserialize<string>();
+            Console.WriteLine($"Requst 1: {request.RawQueryString}");
+            Console.WriteLine($"Requst 2: {request.QueryStringParameters}");
+
+
+            // Check if the imageKey parameter exists and is not null or empty
+            if (request.QueryStringParameters == null || !request.QueryStringParameters.TryGetValue("imageKey", out string imageKey) || string.IsNullOrEmpty(imageKey))
+            {
+                response.StatusCode = 400;
+                response.Body = JsonConvert.SerializeObject(new { Message = "Missing imageKey parameter" });
+                return response;
+            }
+
+            // Delete the image from S3
+            var deleteObjectRequest = new Amazon.S3.Model.DeleteObjectRequest
+            {
+                BucketName = S3_BUCKET_NAME,
+                Key = imageKey
+            };
+            await S3Client.DeleteObjectAsync(deleteObjectRequest);
+
+            // Delete the image record from DynamoDB
+            var imageInfo = await DynamoDBContext.LoadAsync<ImageInfo>(imageKey, new Guid(userId));
+            if (imageInfo != null)
+            {
+                await DynamoDBContext.DeleteAsync(imageInfo);
+            }
+
+            // Return success response
+            response.StatusCode = 200;
+            response.Body = JsonConvert.SerializeObject(new { Message = "Image deleted successfully" });
+        }
+        catch (Exception ex)
+        {
+            context.Logger.LogLine($"Error: {ex.Message}");
+            response.StatusCode = 500;
+            response.Body = JsonConvert.SerializeObject(new { Message = "An error occurred while deleting the image" });
+        }
+
+        return response;
+    }
+
 }
