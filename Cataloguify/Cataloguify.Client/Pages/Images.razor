@@ -148,8 +148,8 @@
         if (response.Content != null)
         {
             totalPages = 1;
-            totalElements = response.Content.Body.Count();
-            images = response.Content.Body;
+            totalElements = response.Content.Count();
+            images = response.Content;
         }
         else
         {
@@ -167,7 +167,7 @@
         
         var response = await ImagesService.SearchImagesAsync(searchImagesModel.Tags, searchImagesModel.Page,
             searchImagesModel.Results, searchImagesModel.SortOrder);
-        images = response.Content.Body;
+        images = response.Content;
         StateHasChanged();
     }
     

@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using Blazored.LocalStorage;
+using Cataloguify.Client.DTO;
 using Microsoft.AspNetCore.Components;
 using Cataloguify.Client.HttpClients;
 
@@ -32,34 +33,22 @@ public class IdentityService : IIdentityService
             new { email, username, password });
     }
 
-    public async Task<HttpResponse<string>> SignInAsync(string email, string password)
-{
-    var response = await _httpClient.PostAsync<object, string>("generate-token", new { email, password });
-    
-    if (response.ErrorMessage != null)
+    public async Task<HttpResponse<TokenDto>> SignInAsync(string email, string password)
     {
-        Console.WriteLine($"Error during sign in: {response.ErrorMessage}");
-        return response;
-    }
-
-    try
-    {
-        Token = response.Content;
-        Console.WriteLine($"Received Token: {Token}");
-        
-        await _localStorage.SetItemAsStringAsync("Token", Token);
-        var jwtToken = _jwtHandler.ReadJwtToken(Token);
-        var payload = jwtToken.Payload;
-        
-        Email = payload.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Email)?.Value;
-        Username = payload.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Name)?.Value;
-        
-        if (Email == null || Username == null)
+        var response = await _httpClient.PostAsync<object, TokenDto>("generate-token", new { email, password });
+        if (response.ErrorMessage != null)
         {
             Console.WriteLine("Error: Missing claims in token.");
             return response;
         }
 
+        Token = response.Content.AccessToken;
+        await _localStorage.SetItemAsStringAsync("Token", Token);
+        
+        var jwtToken = _jwtHandler.ReadJwtToken(Token);
+        var payload = jwtToken.Payload;
+        Email = payload.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value;
+        Username = payload.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")?.Value;
         IsAuthenticated = true;
         
         await _localStorage.SetItemAsStringAsync("Email", Email);
@@ -68,12 +57,6 @@ public class IdentityService : IIdentityService
 
         return response;
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error parsing token: {ex.Message}");
-        return response;
-    }
-}
 
     public async Task Logout()
     {

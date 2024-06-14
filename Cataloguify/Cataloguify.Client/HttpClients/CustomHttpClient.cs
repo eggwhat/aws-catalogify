@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
+using Cataloguify.Client.DTO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization; 
 using Polly;
@@ -50,10 +51,13 @@ public class CustomHttpClient : IHttpClient
         var jsonPayload = JsonConvert.SerializeObject(request, JsonSerializerSettings);
         _logger.LogDebug($"Sending HTTP POST request to URI: {uri} with payload: {jsonPayload}");
 
-        var (success, content) = await TryExecuteAsync(uri, client => client.PostAsync(uri, GetPayload(request)));
+        var (_, response) = await TryExecuteAsync(uri, client => client.PostAsync(uri, GetPayload(request)));
 
-        return !success ? new HttpResponse<TResult>(JsonConvert.DeserializeObject<ErrorMessage>(content, JsonSerializerSettings)) 
-            : new HttpResponse<TResult>(JsonConvert.DeserializeObject<TResult>(content, JsonSerializerSettings));
+        var content = JsonConvert.DeserializeObject<ResponseDto>(response, JsonSerializerSettings);
+        var success = content.StatusCode is 200 or 201;
+
+        return !success ? new HttpResponse<TResult>(JsonConvert.DeserializeObject<ErrorMessage>(content.Body, JsonSerializerSettings)) 
+            : new HttpResponse<TResult>(JsonConvert.DeserializeObject<TResult>(content.Body, JsonSerializerSettings));
     }
 
     public Task PutAsync<T>(string uri, T request)
