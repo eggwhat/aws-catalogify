@@ -99,7 +99,7 @@ public class CustomHttpClient : IHttpClient
     {
         var json = JsonConvert.SerializeObject(request, JsonSerializerSettings);
         // Set content type with charset parameter
-        return new StringContent(json, Encoding.UTF8, "application/json");
+        return new StringContent(json, Encoding.UTF8, "text/plain");
     }
 
 

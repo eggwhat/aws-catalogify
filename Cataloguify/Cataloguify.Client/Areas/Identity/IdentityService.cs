@@ -38,7 +38,6 @@ public class IdentityService : IIdentityService
         var response = await _httpClient.PostAsync<object, TokenDto>("generate-token", new { email, password });
         if (response.ErrorMessage != null)
         {
-            Console.WriteLine("Error: Missing claims in token.");
             return response;
         }
 
@@ -50,11 +49,11 @@ public class IdentityService : IIdentityService
         Email = payload.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value;
         Username = payload.Claims.FirstOrDefault(c => c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")?.Value;
         IsAuthenticated = true;
-        
-        await _localStorage.SetItemAsStringAsync("Email", Email);
-        await _localStorage.SetItemAsStringAsync("Username", Username);
-        await _localStorage.SetItemAsStringAsync("IsAuthenticated", IsAuthenticated.ToString());
 
+        await _localStorage.SetItemAsStringAsync("Email", email ?? string.Empty);
+        await _localStorage.SetItemAsStringAsync("Username", Username ?? string.Empty);
+        await _localStorage.SetItemAsStringAsync("IsAuthenticated", IsAuthenticated.ToString());
+        
         return response;
     }
 
