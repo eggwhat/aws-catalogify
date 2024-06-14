@@ -9,9 +9,19 @@
         "Name": "CataloguifyApi",
         "ProtocolType": "HTTP",
         "CorsConfiguration": {
-          "AllowOrigins": ["*"],  
-          "AllowMethods": ["GET", "POST", "DELETE", "OPTIONS"],
-          "AllowHeaders": ["Content-Type", "Authorization"],
+          "AllowOrigins": [
+            "*"
+          ],
+          "AllowMethods": [
+            "GET",
+            "POST",
+            "DELETE",
+            "OPTIONS"
+          ],
+          "AllowHeaders": [
+            "Content-Type",
+            "Authorization"
+          ],
           "MaxAge": 600
         }
       }
@@ -43,6 +53,24 @@
         },
         "StageName": "prod",
         "AutoDeploy": true
+      }
+    },
+    "HttpApiAuthorizer": {
+      "Type": "AWS::ApiGatewayV2::Authorizer",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "AuthorizerType": "REQUEST",
+        "Name": "LambdaAuthorizer",
+        "AuthorizerUri": {
+          "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CataloguifyFunctionsValidateTokenAsyncGenerated.Arn}/invocations"
+        },
+        "IdentitySource": [
+          "$request.header.Authorization"
+        ],
+        "AuthorizerPayloadFormatVersion": "2.0",
+        "EnableSimpleResponses": false
       }
     },
     "CataloguifyFunctionsGetGenerated": {
@@ -372,6 +400,10 @@
         "RouteKey": "POST /upload-image",
         "Target": {
           "Fn::Sub": "integrations/${UploadImageIntegration}"
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAuthorizer"
         }
       }
     },
@@ -430,6 +462,10 @@
         "RouteKey": "POST /images",
         "Target": {
           "Fn::Sub": "integrations/${GetImagesIntegration}"
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAuthorizer"
         }
       }
     },
@@ -488,6 +524,10 @@
         "RouteKey": "DELETE /images",
         "Target": {
           "Fn::Sub": "integrations/${DeleteImageIntegration}"
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAuthorizer"
         }
       }
     }
