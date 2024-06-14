@@ -1,14 +1,33 @@
-﻿@inherits LayoutComponentBase
+﻿@using Blazored.LocalStorage
+@using Cataloguify.Client.Areas.Identity
+@inject IIdentityService IdentityService
+@inject ILocalStorageService LocalStorage;
+@inherits LayoutComponentBase
+
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+    @if (_isUserAuthenticated)
+    {
+        <div class="sidebar">
+            <NavMenu/>
+        </div>   
+    }
 
     <main>
         <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-            <a href="signin">Sign In</a>
-            <a href="signup">Sign Up</a>
+            @if (_isUserAuthenticated)
+            {
+                <div class="nav-link" style="color: black">Hello, @_username!</div>
+            }
+            <NavLink class="nav-link" href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</NavLink>
+            @if (!_isUserAuthenticated)
+            {
+                <NavLink class="nav-link" href="signin">Sign In</NavLink>
+                <NavLink class="nav-link" href="signup">Sign Up</NavLink>
+            }
+            else
+            {
+                <NavLink class="nav-link" href="" @onclick="@IdentityService.Logout">Sign Out</NavLink>
+            }
         </div>
 
         <article class="content px-4">
@@ -16,3 +35,22 @@
         </article>
     </main>
 </div>
+
+@code {
+
+    private bool _isUserAuthenticated;
+    private string _username;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            var isAuthenticated = await LocalStorage.GetItemAsStringAsync("IsAuthenticated");
+            if (isAuthenticated != null)
+            {
+                _isUserAuthenticated = bool.Parse(isAuthenticated);
+            }
+            _username = await LocalStorage.GetItemAsStringAsync("Username");
+            StateHasChanged();
+        }
+    }
+
+}

@@ -28,7 +28,7 @@ public class CustomHttpClient : IHttpClient
 
     public void SetAccessToken(string token)
     {
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(token);
     }
 
     public async Task<T> GetAsync<T>(string uri)
