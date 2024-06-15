@@ -7,6 +7,7 @@ using Cataloguify.Client.Areas.Images;
 using Cataloguify.Client.HttpClients;
 using MudBlazor;
 using MudBlazor.Services;
+using Cropper.Blazor.Extensions;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -40,5 +41,7 @@ builder.Services.AddMudServices(config =>
     config.SnackbarConfiguration.ShowTransitionDuration = 500;
     config.SnackbarConfiguration.SnackbarVariant = Variant.Filled;
 });
+builder.Services.AddCropper();
+
 
 await builder.Build().RunAsync();

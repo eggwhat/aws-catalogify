@@ -3,52 +3,100 @@
 @inject IImagesService ImagesService
 @inject ISnackbar Snackbar
 @using MudBlazor
+@using Cropper.Blazor.Components
+@using Cropper.Blazor.Models
+@using Cropper.Blazor.Extensions
 
 <MudPaper Class="pa-4">
     <MudText Typo="Typo.h5">Upload Image</MudText>
-    <MudFileUpload FilesChanged="@((IEnumerable<IBrowserFile> files) => OnFilesChanged(files))">
+    <MudFileUpload FilesChanged="@((IEnumerable<IBrowserFile> files) => OnFilesSelected(files))">
         <ButtonTemplate>
             <MudButton HtmlTag="label"
                        Variant="@MudBlazor.Variant.Filled"
                        Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.CloudUpload"
                        For="@context.Id">
-                Upload Files
+                Select Image
             </MudButton>
         </ButtonTemplate>
     </MudFileUpload>
+
+    @if (_imageData != null)
+    {
+        <div class="img-container">
+            <CropperComponent Src="@($"data:image/png;base64,{_imageData}")" Options="@_cropperOptions" @ref="cropper" />
+
+        </div>
+        <MudButton OnClick="@ApplyCropping"
+                   Variant="@MudBlazor.Variant.Filled"
+                   Color="Color.Success">
+            Crop and Upload
+        </MudButton>
+    }
 </MudPaper>
 
+<style>
+    .img-container {
+        max-width: 100%;
+        max-height: 400px;
+        overflow: hidden;
+    }
+    .big-img {
+        max-width: 100%;
+        height: auto;
+    }
+</style>
+
 @code {
-    private async Task OnFilesChanged(IEnumerable<IBrowserFile> files)
+    private CropperComponent cropper;
+    private string _imageData;
+   private Options _cropperOptions = new Options
+    {
+        AspectRatio = (decimal?)1.0  // Explicitly casting to decimal
+    };
+
+
+    private async Task OnFilesSelected(IEnumerable<IBrowserFile> files)
     {
         const int maxAllowedSize = 10 * 1024 * 1024; // 10 MB limit
-        foreach (var file in files)
+        var file = files.FirstOrDefault();
+        if (file != null && file.Size <= maxAllowedSize)
         {
-            if (file.Size > maxAllowedSize)
-            {
-                Snackbar.Add("File size should not exceed 10 MB.", Severity.Error);
-                continue;
-            }
-
+            var buffer = new byte[file.Size];
             try
             {
-                using (var stream = file.OpenReadStream(maxAllowedSize))
-                {
-                    var buffer = new byte[file.Size];
-                    await stream.ReadAsync(buffer, 0, buffer.Length);
-                    string base64Image = Convert.ToBase64String(buffer);
-                    var response = await ImagesService.UploadImageAsync(base64Image);
-
-                  
-                        Snackbar.Add("Image uploaded successfully!", Severity.Success);
-                    
-                }
+                await file.OpenReadStream(maxAllowedSize).ReadAsync(buffer);
+                _imageData = Convert.ToBase64String(buffer);
             }
             catch (Exception ex)
             {
-                Snackbar.Add($"An error occurred: {ex.Message}", Severity.Error);
+                Snackbar.Add($"Failed to read file: {ex.Message}", Severity.Error);
             }
+        }
+        else
+        {
+            Snackbar.Add("File size should not exceed 10 MB or no file selected.", Severity.Error);
+        }
+    }
+
+    private async Task ApplyCropping()
+    {
+        try
+        {
+            var options = new GetCroppedCanvasOptions
+            {
+                Width = 256,
+                Height = 256,
+                ImageSmoothingQuality = ImageSmoothingQuality.High.ToEnumString()
+            };
+
+            var croppedCanvasDataURL = await cropper.GetCroppedCanvasDataURLAsync(options);
+            var response = await ImagesService.UploadImageAsync(croppedCanvasDataURL);
+            Snackbar.Add("Image uploaded successfully!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"An error occurred: {ex.Message}", Severity.Error);
         }
     }
 }
