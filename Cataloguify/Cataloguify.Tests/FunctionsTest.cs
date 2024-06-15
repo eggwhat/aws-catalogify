@@ -5,11 +5,16 @@ using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.TestUtilities;
 using Amazon.Rekognition;
+using Amazon.Rekognition.Model;
 using Amazon.S3;
+using Amazon.S3.Model;
+using Cataloguify.Documents;
 using Cataloguify.Dynamo;
 using FluentAssertions;
 using Moq;
 using Newtonsoft.Json;
+using System.Security.Claims;
+using System.Text.Json;
 using Xunit;
 
 namespace Cataloguify.Tests;
@@ -213,5 +218,89 @@ public class FunctionTest
         response.Body.Should().Be(JsonConvert.SerializeObject(new { Message = "An error occurred during signup" }));
     }
 
+    [Fact]
+    public void ValidateTokenAsync_NoAuthorizationHeader_ReturnsDenyPolicy()
+    {
+        // Arrange
+        var request = new APIGatewayCustomAuthorizerRequest
+        {
+            Headers = new Dictionary<string, string>()
+        };
+
+        // Act & Assert
+        var act = () => _functions.ValidateTokenAsync(request, _mockContext.Object); 
+        act.Should().Throw<KeyNotFoundException>();
+    
+    }
+
+    [Fact]
+    public async Task UploadImage_SuccessfulUpload_ReturnsOk()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var request = new APIGatewayHttpApiV2ProxyRequest
+        {
+            Body = JsonConvert.SerializeObject(new ImageRequest { Image = Convert.ToBase64String(new byte[] { 1, 2, 3, 4 }) }),
+            RequestContext = new APIGatewayHttpApiV2ProxyRequest.ProxyRequestContext
+            {
+                Authorizer = new APIGatewayHttpApiV2ProxyRequest.AuthorizerDescription
+                {
+                    Lambda = new Dictionary<string, object>
+                    {
+                        { "UserId", JsonDocument.Parse($"\"{userId}\"").RootElement }
+                    }
+                }
+            }
+        };
+
+        var detectLabelsResponse = new DetectLabelsResponse
+        {
+            Labels = new List<Label> { new Label { Name = "TestLabel", Confidence = 99F } }
+        };
+        _mockRekognition.Setup(x => x.DetectLabelsAsync(It.IsAny<DetectLabelsRequest>(), default)).ReturnsAsync(detectLabelsResponse);
+        _mockS3Client.Setup(x => x.PutObjectAsync(It.IsAny<PutObjectRequest>(), default)).ReturnsAsync(new PutObjectResponse());
+
+        // Act
+        var response = await _functions.UploadImage(request, _mockContext.Object);
+
+        // Assert
+        response.StatusCode.Should().Be(200);
+        response.Headers["Content-Type"].Should().Be("text/plain");
+        _mockRekognition.Verify(x => x.DetectLabelsAsync(It.IsAny<DetectLabelsRequest>(), default), Times.Once);
+        _mockS3Client.Verify(x => x.PutObjectAsync(It.IsAny<PutObjectRequest>(), default), Times.Once);
+        _mockDynamoDBContext.Verify(x => x.SaveAsync(It.IsAny<ImageInfo>(), default), Times.Once);
+    }
+
+    [Fact]
+    public async Task UploadImage_ExceptionThrown_ReturnsInternalServerError()
+    {
+        // Arrange
+        var request = new APIGatewayHttpApiV2ProxyRequest
+        {
+            Body = JsonConvert.SerializeObject(new ImageRequest { Image = Convert.ToBase64String(new byte[] { 1, 2, 3, 4 }) }),
+            RequestContext = new APIGatewayHttpApiV2ProxyRequest.ProxyRequestContext
+            {
+                Authorizer = new APIGatewayHttpApiV2ProxyRequest.AuthorizerDescription
+                {
+                    Lambda = new Dictionary<string, object>
+                    {
+                        { "UserId", JsonDocument.Parse("\"test-user-id\"").RootElement }
+                    }
+                }
+            }
+        };
+
+        _mockRekognition.Setup(x => x.DetectLabelsAsync(It.IsAny<DetectLabelsRequest>(), default)).ThrowsAsync(new System.Exception("Rekognition error"));
+
+        // Act
+        var response = await _functions.UploadImage(request, _mockContext.Object);
+
+        // Assert
+        response.StatusCode.Should().Be(500);
+        response.Body.Should().Be("Error processing image");
+        _mockRekognition.Verify(x => x.DetectLabelsAsync(It.IsAny<DetectLabelsRequest>(), default), Times.Once);
+        _mockS3Client.Verify(x => x.PutObjectAsync(It.IsAny<PutObjectRequest>(), default), Times.Never);
+        _mockDynamoDBContext.Verify(x => x.SaveAsync(It.IsAny<ImageInfo>(), default), Times.Never);
+    }
 
 }

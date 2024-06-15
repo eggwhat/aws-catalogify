@@ -22,9 +22,11 @@ using Cataloguify.Dynamo;
 using Amazon.Auth.AccessControlPolicy;
 using System.Text.Json;
 using Cataloguify.Entities;
+using System.Runtime.CompilerServices;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
+[assembly: InternalsVisibleTo("Cataloguify.Tests")]
 
 namespace Cataloguify;
 
@@ -232,8 +234,8 @@ public class Functions
             }
         };
     }
-    
-    private ClaimsPrincipal GetClaimsPrincipal(string authToken)
+
+    internal ClaimsPrincipal GetClaimsPrincipal(string authToken)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var validationParams = new TokenValidationParameters()
