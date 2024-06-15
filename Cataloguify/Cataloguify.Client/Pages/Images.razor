@@ -48,6 +48,29 @@
 <div>
     <RadzenDataList AllowPaging="false" Data="@images" TItem="ImageDto">
         <Template Context="image">
+            <RadzenCard>
+                <RadzenRow>
+                    <RadzenColumn Size="7">
+                        <RadzenImage Path="@image.ImageUrl" Style="width: 30rem;" AlternateText="url image"/>
+                    </RadzenColumn>
+                    <RadzenColumn Size="3">
+                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-my-0">Uploaded At</RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body1"><b>@(image.UploadedAt)</b></RadzenText>
+                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0">Tags</RadzenText>
+                        @foreach (var tag in image.Tags)
+                        {
+                            <RadzenBadge Shade="Shade.Lighter" BadgeStyle="BadgeStyle.Primary" Text="@tag"
+                                         class="rz-display-flex rz-mt-2 rz-my-0"/>
+                        }
+                    </RadzenColumn>
+                </RadzenRow>
+                <hr style="border: none; background-color: rgba(0,0,0,.2); height: 1px; margin: 1rem 0;"/>
+                <RadzenRow>
+                    <RadzenColumn Size="12" Class="rz-text-truncate">
+                        <b>@(image.ImageKey)</b>
+                    </RadzenColumn>
+                </RadzenRow>
+            </RadzenCard>
         </Template>
     </RadzenDataList>
 </div>
@@ -147,9 +170,9 @@
             searchImagesModel.Results, searchImagesModel.SortOrder);
         if (response.Content != null)
         {
-            totalPages = 1;
-            totalElements = response.Content.Count();
-            images = response.Content;
+            totalPages = response.Content.TotalPages;
+            totalElements = response.Content.Results;
+            images = response.Content.Content;
         }
         else
         {
@@ -167,7 +190,7 @@
         
         var response = await ImagesService.SearchImagesAsync(searchImagesModel.Tags, searchImagesModel.Page,
             searchImagesModel.Results, searchImagesModel.SortOrder);
-        images = response.Content;
+        images = response.Content.Content;
         StateHasChanged();
     }
     

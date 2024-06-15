@@ -29,13 +29,13 @@ public class IdentityService : IIdentityService
 
     public async Task<HttpResponse<object>> SignUpAsync(string email, string username, string password)
     {
-        return await _httpClient.PostAsync<object, object>("sign-up",
+        return await _httpClient.PostAsync<object, object>("prod/sign-up",
             new { email, username, password });
     }
 
     public async Task<HttpResponse<TokenDto>> SignInAsync(string email, string password)
     {
-        var response = await _httpClient.PostAsync<object, TokenDto>("generate-token", new { email, password });
+        var response = await _httpClient.PostAsync<object, TokenDto>("prod/generate-token", new { email, password });
         if (response.ErrorMessage != null)
         {
             return response;

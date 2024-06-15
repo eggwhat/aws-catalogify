@@ -8,8 +8,11 @@
 @using Cropper.Blazor.Extensions
 
 <MudPaper Class="pa-4">
+    <RadzenAlert AlertStyle="AlertStyle.Danger" @bind-Visible="showError" Close="@OnAlertClose">
+        @errorMessage
+    </RadzenAlert>
     <MudText Typo="Typo.h5">Upload Image</MudText>
-    <MudFileUpload FilesChanged="@((IEnumerable<IBrowserFile> files) => OnFilesSelected(files))">
+    <MudFileUpload T="IReadOnlyList<IBrowserFile>" FilesChanged="OnFilesChanged">
         <ButtonTemplate>
             <MudButton HtmlTag="label"
                        Variant="@MudBlazor.Variant.Filled"
@@ -48,15 +51,16 @@
 </style>
 
 @code {
-    private CropperComponent cropper;
-    private string _imageData;
-   private Options _cropperOptions = new Options
+    private bool showError = false;
+    private string errorMessage = string.Empty;
+
+    private void OnAlertClose()
     {
-        AspectRatio = (decimal?)1.0  // Explicitly casting to decimal
-    };
+        showError = false;
+        errorMessage = string.Empty;
+    }
 
-
-    private async Task OnFilesSelected(IEnumerable<IBrowserFile> files)
+    private async Task OnFilesChanged(IEnumerable<IBrowserFile> files)
     {
         const int maxAllowedSize = 10 * 1024 * 1024; // 10 MB limit
         var file = files.FirstOrDefault();
@@ -65,8 +69,23 @@
             var buffer = new byte[file.Size];
             try
             {
-                await file.OpenReadStream(maxAllowedSize).ReadAsync(buffer);
-                _imageData = Convert.ToBase64String(buffer);
+                using (var stream = file.OpenReadStream(maxAllowedSize))
+                {
+                    var buffer = new byte[file.Size];
+                    await stream.ReadAsync(buffer, 0, buffer.Length);
+                    string base64Image = Convert.ToBase64String(buffer);
+                    var response = await ImagesService.UploadImageAsync(base64Image);
+                    if (response.ErrorMessage == null)
+                    {
+                        Snackbar.Add("Image uploaded successfully!", Severity.Success);
+                    }
+                    else
+                    {
+                        showError = true;
+                        errorMessage = $"Error during uploading image: {response.ErrorMessage.Message}";
+                        StateHasChanged();
+                    }
+                }
             }
             catch (Exception ex)
             {

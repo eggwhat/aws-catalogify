@@ -6,6 +6,6 @@ namespace Cataloguify.Client.Areas.Images;
 public interface IImagesService
 {
     Task<HttpResponse<object>> UploadImageAsync(string image);
-    Task<HttpResponse<IEnumerable<ImageDto>>> SearchImagesAsync(IEnumerable<string> tags, int page,
+    Task<HttpResponse<PageableDto>> SearchImagesAsync(IEnumerable<string> tags, int page,
         int results, string sortOrder);
 }
