@@ -147,9 +147,9 @@
             searchImagesModel.Results, searchImagesModel.SortOrder);
         if (response.Content != null)
         {
-            totalPages = 1;
-            totalElements = response.Content.Count();
-            images = response.Content;
+            totalPages = response.Content.TotalPages;
+            totalElements = response.Content.Results;
+            images = response.Content.Content;
         }
         else
         {
@@ -167,7 +167,7 @@
         
         var response = await ImagesService.SearchImagesAsync(searchImagesModel.Tags, searchImagesModel.Page,
             searchImagesModel.Results, searchImagesModel.SortOrder);
-        images = response.Content;
+        images = response.Content.Content;
         StateHasChanged();
     }
     
