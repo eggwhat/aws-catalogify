@@ -28,9 +28,9 @@
 
         <RadzenRow AlignItems="AlignItems.Center">
             <RadzenColumn Size="12" SizeMD="12">
-                <RadzenPickList @bind-Source="@notSelectedTags" @bind-Target="@TempSearchImagesModel.Tags" Style="height: 280px; width: 100%;"
-                                Orientation="@Orientation.Horizontal" AllowFiltering="false" Multiple="false"
-                                ShowHeader="true" ButtonGap="12px" ButtonJustifyContent="JustifyContent.Center"
+                <RadzenPickList @bind-Source="@TempSearchImagesModel.NotSelectedTags" @bind-Target="@TempSearchImagesModel.Tags"
+                                Style="height: 280px; width: 100%;" Orientation="@Orientation.Horizontal" AllowFiltering="false"
+                                Multiple="false" ShowHeader="true" ButtonGap="12px" ButtonJustifyContent="JustifyContent.Center"
                                 ButtonStyle="@ButtonStyle.Secondary" ButtonSize="@ButtonSize.Medium" ButtonVariant="Variant.Outlined">
                     <SourceHeader>
                         <h4>Not selected tags:</h4>
@@ -72,8 +72,6 @@
         new KeyValuePair<string, string>("Ascending", "asc")
     ];
     
-    private IEnumerable<string> notSelectedTags = ["Person", "Pear"];
-    
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -85,6 +83,10 @@
         SearchImagesModel.Page = TempSearchImagesModel.Page;
         SearchImagesModel.Results = TempSearchImagesModel.Results;
         SearchImagesModel.SortOrder = TempSearchImagesModel.SortOrder;
+        SearchImagesModel.Tags = TempSearchImagesModel.Tags != null
+            ? TempSearchImagesModel.Tags.DeepClone() : [];
+        SearchImagesModel.NotSelectedTags = TempSearchImagesModel.NotSelectedTags != null
+            ? TempSearchImagesModel.NotSelectedTags.DeepClone() : [];
         
         DialogService.Close(true);
     }
