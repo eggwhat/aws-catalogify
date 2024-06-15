@@ -48,8 +48,6 @@ public class Functions
 
     float MinConfidence { get; set; } = DEFAULT_MIN_CONFIDENCE;
 
-    HashSet<string> SupportedImageTypes { get; } = new HashSet<string> { ".png", ".jpg", ".jpeg" };
-
     /// <summary>
     /// Default constructor that Lambda will invoke.
     /// </summary>
@@ -57,7 +55,7 @@ public class Functions
     {
     }
 
-    public Functions(IAmazonS3 s3Client, IAmazonRekognition rekognitionClient, IAmazonDynamoDB amazonDynamoDBClient, IDynamoDBContext dynamoDBContext, IDynamoDBHelper dynamoDBHelper)
+    internal Functions(IAmazonS3 s3Client, IAmazonRekognition rekognitionClient, IAmazonDynamoDB amazonDynamoDBClient, IDynamoDBContext dynamoDBContext, IDynamoDBHelper dynamoDBHelper)
     {
         S3Client = s3Client;
         RekognitionClient = rekognitionClient;
@@ -259,6 +257,12 @@ public class Functions
     [HttpApi(LambdaHttpMethod.Post, "/upload-image")]
     public async Task<APIGatewayProxyResponse> UploadImage(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
+        var response = new APIGatewayProxyResponse
+        {
+            Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" }, {"Access-Control-Allow-Origin", "*" },
+                { "Access-Control-Allow-Credentials", "true"} }
+        };
+    
         var environmentMinConfidence = System.Environment.GetEnvironmentVariable(MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME);
         if (!string.IsNullOrWhiteSpace(environmentMinConfidence))
         {
@@ -321,23 +325,16 @@ public class Functions
             await DynamoDBContext.SaveAsync(imageInfo);
 
             // Return response
-            return new APIGatewayProxyResponse
-            {
-                StatusCode = 200,
-                Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" } }
-            };
+            response.StatusCode = 200;
         }
         catch (Exception ex)
         {
             // Handle any errors
             LambdaLogger.Log($"Error processing image: {ex.Message}");
-            return new APIGatewayProxyResponse
-            {
-                StatusCode = 500,
-                Body = "Error processing image",
-                Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" } }
-            };
+            response.StatusCode = 500;
+            response.Body = "Error processing image";
         }
+        return response;
     }
 
     [LambdaFunction]
