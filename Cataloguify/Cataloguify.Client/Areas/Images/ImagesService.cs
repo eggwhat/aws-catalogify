@@ -28,4 +28,10 @@ public class ImagesService : IImagesService
         return await _httpClient.PostAsync<object, PageableDto>("prod/images",
             new { tags, page, results, sortOrder });
     }
+
+    public async Task DeleteImageAsync(Guid imageKey)
+    {
+        _httpClient.SetAccessToken(await _localStorage.GetItemAsStringAsync("Token"));
+        await _httpClient.DeleteAsync($"prod/images?imageKey={imageKey}");
+    }
 }

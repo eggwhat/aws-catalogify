@@ -7,4 +7,5 @@ public class ImageDto
     public string ImageUrl { get; set; }
     public IEnumerable<string> Tags { get; set; }
     public DateTime UploadedAt { get; set; }
+    public bool DeleteSubmitted { get; set; }
 }
