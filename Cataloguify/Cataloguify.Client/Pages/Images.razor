@@ -2,6 +2,7 @@
 @using Cataloguify.Client.Areas.Images
 @using Cataloguify.Client.DTO
 @using Cataloguify.Client.Models
+@using Cataloguify.Client.Pages.Dialogs
 @using Radzen
 @using MudBlazor
 @using DialogOptions = Radzen.DialogOptions
@@ -16,9 +17,12 @@
 
 <h1 class="rz-p-8 search-font">Your images</h1>
 
-<RadzenStack Gap="1rem" class="rz-py-5 rz-mx-auto" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Style="max-width: 1080px">
-    <RadzenButton Text="Filtering Criteria" Click="@OpenSearchDialog" Icon="pageview" class="separate-button standard-button "/>
-    <RadzenButton Text="Clear filters" Click="@(() => ClearFilters())" Icon="close" class="separate-button clear-button"/>
+<RadzenStack Gap="1rem" class="rz-py-5 rz-mx-auto" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start"
+             JustifyContent="JustifyContent.SpaceBetween" Style="max-width: 1080px">
+    <RadzenStack Orientation="Orientation.Horizontal">
+        <RadzenButton Text="Filtering Criteria" Click="@OpenSearchDialog" Icon="pageview" class="separate-button standard-button "/>
+        <RadzenButton Text="Clear filters" Click="@ClearFilters" Icon="close" class="separate-button clear-button"/>
+    </RadzenStack>
 </RadzenStack>
 
 @if (!pageInitialized)
@@ -196,13 +200,13 @@
     
     private async Task OpenSearchDialog()
     {
-        // await DialogService.OpenAsync<ImagesSearchDialog>($"Filter all images by criteria:",
-        //     new Dictionary<string, object>() { { "SearchImagesModel", searchImagesModel } },
-        //     new DialogOptions()
-        //     {
-        //         Width = "800px", Height = "650px", Resizable = true, Draggable = true,
-        //         AutoFocusFirstElement = false
-        //     });
+        await DialogService.OpenAsync<SearchImagesDialog>("Filter all images by criteria:",
+            new Dictionary<string, object>() { { "SearchImagesModel", searchImagesModel } },
+            new DialogOptions()
+            {
+                Width = "800px", Height = "500px", Resizable = true, Draggable = true,
+                AutoFocusFirstElement = false
+            });
         await SearchImages();
     }
     

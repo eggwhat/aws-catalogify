@@ -24,7 +24,6 @@ builder.Services.AddHttpClient<IHttpClient, CustomHttpClient>((serviceProvider, 
 
 // Add local storage and other services
 builder.Services.AddBlazoredLocalStorage();
-builder.Services.AddMudServices();
 builder.Services.AddScoped<Radzen.DialogService, Radzen.DialogService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<IImagesService, ImagesService>();

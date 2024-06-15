@@ -1,0 +1,91 @@
+@page "/events/search/dialog"
+@using Cataloguify.Client.DTO
+@using Cataloguify.Client.Models
+@using Radzen
+@using Blazorise.DeepCloner
+@inject NavigationManager NavigationManager
+@inject Radzen.DialogService DialogService
+
+<RadzenFieldset>
+    <RadzenStack Gap="1rem">
+        <RadzenRow Gap="1rem" JustifyContent="JustifyContent.Center">
+            <RadzenColumn Size="12" SizeSM="4">
+                <RadzenStack>
+                    <RadzenFormField Text="Results on page" Variant="Variant.Outlined">
+                        <RadzenNumeric @bind-Value="@TempSearchImagesModel.Results" />
+                    </RadzenFormField>
+                </RadzenStack>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeSM="4">
+                <RadzenStack>
+                    <RadzenFormField Text="Sorting by uploaded at" Variant="Variant.Outlined">
+                        <RadzenDropDown Data="@directions" @bind-Value="@TempSearchImagesModel.SortOrder"
+                                        TextProperty="Key" ValueProperty="Value" />
+                    </RadzenFormField>
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="12">
+                <RadzenPickList @bind-Source="@notSelectedTags" @bind-Target="@TempSearchImagesModel.Tags" Style="height: 280px; width: 100%;"
+                                Orientation="@Orientation.Horizontal" AllowFiltering="false" Multiple="false"
+                                ShowHeader="true" ButtonGap="12px" ButtonJustifyContent="JustifyContent.Center"
+                                ButtonStyle="@ButtonStyle.Secondary" ButtonSize="@ButtonSize.Medium" ButtonVariant="Variant.Outlined">
+                    <SourceHeader>
+                        <h4>Not selected tags:</h4>
+                    </SourceHeader>
+                    <TargetHeader>
+                        <h4>Selected tags:</h4>
+                    </TargetHeader>
+                    <Template>
+                        @context
+                    </Template>
+                </RadzenPickList>
+            </RadzenColumn>
+        </RadzenRow>
+        
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="12">
+                
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenStack>
+    
+    <RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" Style="height: 100%;">
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+            <RadzenButton Click="@HandleFiltering" Variant="Variant.Flat" Text="Submit" Style="width: 120px; background-color: #006400;"/>
+            <RadzenButton Click="@(() => DialogService.Close(true))" Variant="Variant.Flat" Text="Close" Style="width: 120px"/>
+        </RadzenStack>
+    </RadzenStack>
+</RadzenFieldset>
+
+@code {
+    [Parameter]
+    public SearchImagesModel SearchImagesModel { get; set; }
+
+    private SearchImagesModel TempSearchImagesModel { get; set; }
+    
+    private List<KeyValuePair<string, string>> directions =
+    [
+        new KeyValuePair<string, string>("Descending", "des"),
+        new KeyValuePair<string, string>("Ascending", "asc")
+    ];
+    
+    private IEnumerable<string> notSelectedTags = ["Person", "Pear"];
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        TempSearchImagesModel = SearchImagesModel.DeepClone();
+    }
+    
+    private void HandleFiltering()
+    {
+        SearchImagesModel.Page = TempSearchImagesModel.Page;
+        SearchImagesModel.Results = TempSearchImagesModel.Results;
+        SearchImagesModel.SortOrder = TempSearchImagesModel.SortOrder;
+        
+        DialogService.Close(true);
+    }
+}
