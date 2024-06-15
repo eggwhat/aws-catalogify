@@ -55,7 +55,10 @@
             <RadzenCard>
                 <RadzenRow>
                     <RadzenColumn Size="7">
-                        <RadzenImage Path="@image.ImageUrl" Style="width: 30rem;" AlternateText="url image"/>
+                        <RadzenImage Path="@image.ImageUrl" Style="width: 30rem; cursor: pointer"
+                                     AlternateText="No image found"
+                                     @onclick="@(() => OpenImageDialog(image.ImageUrl))">
+                        </RadzenImage>
                     </RadzenColumn>
                     <RadzenColumn Size="3">
                         <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-my-0">Uploaded At</RadzenText>
@@ -208,6 +211,17 @@
                 AutoFocusFirstElement = false
             });
         await SearchImages();
+    }
+    
+    private async Task OpenImageDialog(string imageUrl)
+    {
+        await DialogService.OpenAsync<ImageDialog>("",
+            new Dictionary<string, object>() { { "ImageUrl", imageUrl } },
+            new DialogOptions()
+            {
+                Width = "900px", Height = "650px", Resizable = true, Draggable = true,
+                AutoFocusFirstElement = false
+            });
     }
     
     private async Task ClearFilters()

@@ -1,0 +1,21 @@
+@using Radzen
+@inject Radzen.DialogService DialogService
+
+@if (!string.IsNullOrEmpty(ImageUrl))
+{
+    <RadzenStack AlignItems="AlignItems.Center" Class="rz-mx-auto" >
+        <RadzenImage Path="@ImageUrl" AlternateText="No image found" style="width: 95%; max-height: 100%;"
+                     class="rz-m-auto"/>
+    </RadzenStack>
+}
+
+@code {
+    [Parameter]
+    public string ImageUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        StateHasChanged();
+    }
+}
