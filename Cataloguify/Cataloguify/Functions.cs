@@ -42,7 +42,7 @@ public class Functions
     IAmazonRekognition RekognitionClient { get; }
     IAmazonDynamoDB AmazonDynamoDBClient { get; }
     IDynamoDBContext DynamoDBContext { get; }
-    DynamoDBHelper DynamoDBHelper { get; }
+    IDynamoDBHelper DynamoDBHelper { get; }
 
     float MinConfidence { get; set; } = DEFAULT_MIN_CONFIDENCE;
 
@@ -51,13 +51,17 @@ public class Functions
     /// <summary>
     /// Default constructor that Lambda will invoke.
     /// </summary>
-    public Functions()
+    public Functions() : this(new AmazonS3Client(), new AmazonRekognitionClient(), new AmazonDynamoDBClient(), null, null)
     {
-        this.S3Client = new AmazonS3Client();
-        this.RekognitionClient = new AmazonRekognitionClient();
-        this.AmazonDynamoDBClient = new AmazonDynamoDBClient();
-        this.DynamoDBContext = new DynamoDBContext(AmazonDynamoDBClient);
-        this.DynamoDBHelper = new DynamoDBHelper(this.AmazonDynamoDBClient);
+    }
+
+    public Functions(IAmazonS3 s3Client, IAmazonRekognition rekognitionClient, IAmazonDynamoDB amazonDynamoDBClient, IDynamoDBContext dynamoDBContext, IDynamoDBHelper dynamoDBHelper)
+    {
+        S3Client = s3Client;
+        RekognitionClient = rekognitionClient;
+        AmazonDynamoDBClient = amazonDynamoDBClient;
+        DynamoDBContext = dynamoDBContext ?? new DynamoDBContext(amazonDynamoDBClient);
+        DynamoDBHelper = dynamoDBHelper ?? new DynamoDBHelper(amazonDynamoDBClient);
     }
 
 
