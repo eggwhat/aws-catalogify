@@ -33,6 +33,27 @@
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="_content/Chronos.Blazor.Cropper/CropHelper.js"></script>
+
+    <script>
+        function getImageSrc(imageId) {
+            var imageElement = document.getElementById(imageId);
+            return imageElement ? imageElement.src : null;
+        }
+
+        function blobToBase64(blobUrl) {
+            return fetch(blobUrl)
+                .then(response => response.blob())
+                .then(blob => new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result.split(',')[1]); // Splits the result and gets only the Base64 string
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                }));
+        }
+
+
+
+    </script>
 </body>
 
 </html>

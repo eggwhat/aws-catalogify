@@ -10,4 +10,5 @@ public interface IHttpClient
     Task<HttpResponse<TResult>> PutAsync<TRequest, TResult>(string uri, TRequest request);
     Task DeleteAsync(string uri);
     Task DeleteAsync(string uri, object payload);
+    Task<HttpResponseMessage> PostAsJsonAsync<T>(string uri, T content);
 }

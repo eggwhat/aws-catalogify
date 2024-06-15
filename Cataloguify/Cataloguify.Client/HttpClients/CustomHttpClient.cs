@@ -4,6 +4,7 @@ using Cataloguify.Client.DTO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization; 
 using Polly;
+using System.Net.Http.Json; 
 
 namespace Cataloguify.Client.HttpClients;
 
@@ -145,4 +146,11 @@ public class CustomHttpClient : IHttpClient
             return (false, errorContent);
         }
     });
+
+    public async Task<HttpResponseMessage> PostAsJsonAsync<T>(string uri, T content)
+    {
+        var jsonContent = JsonContent.Create(content);
+        return await _client.PostAsync(uri, jsonContent);
+    }
+
 }
