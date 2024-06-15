@@ -3,32 +3,33 @@
 @inject IImagesService ImagesService
 @inject ISnackbar Snackbar
 @using MudBlazor
+@using Blazor.Cropper
 @using Cropper.Blazor.Components
 @using Cropper.Blazor.Models
 @using Cropper.Blazor.Extensions
 
-<MudPaper Class="pa-4">
+@* <MudPaper Class="pa-4">
     <RadzenAlert AlertStyle="AlertStyle.Danger" @bind-Visible="showError" Close="@OnAlertClose">
         @errorMessage
     </RadzenAlert>
     <MudText Typo="Typo.h5">Upload Image</MudText>
-    <MudFileUpload T="IReadOnlyList<IBrowserFile>" FilesChanged="OnFilesChanged">
+    <MudFileUpload FilesChanged="EventCallback.Factory.Create<InputFileChangeEventArgs>(this, OnFilesChanged)">
         <ButtonTemplate>
             <MudButton HtmlTag="label"
-                       Variant="@MudBlazor.Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.CloudUpload"
-                       For="@context.Id">
+                    Variant="@MudBlazor.Variant.Filled"
+                    Color="Color.Primary"
+                    StartIcon="@Icons.Material.Filled.CloudUpload"
+                    For="@context.Id">
                 Select Image
             </MudButton>
         </ButtonTemplate>
     </MudFileUpload>
 
+
     @if (_imageData != null)
     {
         <div class="img-container">
             <CropperComponent Src="@($"data:image/png;base64,{_imageData}")" Options="@_cropperOptions" @ref="cropper" />
-
         </div>
         <MudButton OnClick="@ApplyCropping"
                    Variant="@MudBlazor.Variant.Filled"
@@ -51,6 +52,13 @@
 </style>
 
 @code {
+    private string _imageData;
+    private Options _cropperOptions = new Options
+    {
+        AspectRatio = (decimal?)1.0
+    };
+    private CropperComponent cropper;
+
     private bool showError = false;
     private string errorMessage = string.Empty;
 
@@ -60,8 +68,9 @@
         errorMessage = string.Empty;
     }
 
-    private async Task OnFilesChanged(IEnumerable<IBrowserFile> files)
+    private async Task OnFilesChanged(InputFileChangeEventArgs e)
     {
+        var files = e.GetMultipleFiles();
         const int maxAllowedSize = 10 * 1024 * 1024; // 10 MB limit
         var file = files.FirstOrDefault();
         if (file != null && file.Size <= maxAllowedSize)
@@ -71,20 +80,8 @@
             {
                 using (var stream = file.OpenReadStream(maxAllowedSize))
                 {
-                    var buffer = new byte[file.Size];
                     await stream.ReadAsync(buffer, 0, buffer.Length);
-                    string base64Image = Convert.ToBase64String(buffer);
-                    var response = await ImagesService.UploadImageAsync(base64Image);
-                    if (response.ErrorMessage == null)
-                    {
-                        Snackbar.Add("Image uploaded successfully!", Severity.Success);
-                    }
-                    else
-                    {
-                        showError = true;
-                        errorMessage = $"Error during uploading image: {response.ErrorMessage.Message}";
-                        StateHasChanged();
-                    }
+                    _imageData = Convert.ToBase64String(buffer);
                 }
             }
             catch (Exception ex)
@@ -111,11 +108,146 @@
 
             var croppedCanvasDataURL = await cropper.GetCroppedCanvasDataURLAsync(options);
             var response = await ImagesService.UploadImageAsync(croppedCanvasDataURL);
-            Snackbar.Add("Image uploaded successfully!", Severity.Success);
+           
+                Snackbar.Add("Image uploaded successfully!", Severity.Success);
+            
         }
         catch (Exception ex)
         {
             Snackbar.Add($"An error occurred: {ex.Message}", Severity.Error);
         }
     }
+} *@
+
+
+
+@inject IJSRuntime JSRuntime;
+
+<h1>Cropper</h1>
+<InputFile id="input1" OnChange="OnInputFileChange"></InputFile>
+@if (parsing)
+{
+    <center>
+        <h2>@prompt</h2>
+    </center>
 }
+@if (!string.IsNullOrEmpty(imgUrl) && !parsing)
+{
+    <center>
+        <h2>Crop Result:</h2>
+        <img src="@imgUrl" />
+    </center>
+}
+@if (file != null)
+{
+    <div class="modal is-active">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Modal title</p>
+                <button class="delete" aria-label="close" @onclick="()=>file=null"></button>
+            </header>
+            <section class="modal-card-body">
+                <Cropper MaxCropedHeight="500" MaxCropedWidth="500" @ref="cropper" AspectRatio="proportion==0?1:proportion" CropperHeight="400"
+                         RequireAspectRatio="bool.Parse(enableProportion)" InputId="input1" ImageFile="file" @bind-Ratio="ratio"
+                         OffsetX="10"
+                         OffsetY="11"
+                         InitCropWidth="50"
+                         InitCropHeight="50"
+                         AnimeGifEnable="true"
+                         PureCSharpProcessing="purecs"
+                         IsCropLocked="isCropLocked"
+                         IsImageLocked="isImageLocked"
+                         OnSizeChanged="SizeChanged"></Cropper>
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-success" @onclick="DoneCrop">Done</button>
+                <button class="button is-success" @onclick="@DisplayInfo">Info</button>
+                @if (cropper != null)
+                {
+                    <input type="range" min="@(cropper.MinRatio*100)" max="@(200)" value="@(ratio*100)"
+                           @oninput="OnRatioChange" />
+                    <div>
+                        width: @((int)width) |
+                        height: @((int)height)
+                    </div>
+                }
+                |IsCropLocked:<input type="checkbox" @bind="isCropLocked" />
+                |IsImageLocked:<input type="checkbox" @bind="isImageLocked" />
+
+            </footer>
+        </div>
+    </div>
+}
+<br />
+<select @bind-value="enableProportion" @bind-value:event="onchange">
+    <option value="true">Enable proportion</option>
+    <option value="false">Disable proportion</option>
+</select>
+@if (bool.Parse(enableProportion))
+{
+    <input type="number" @bind-value="proportion" placeholder="proportion" />
+}
+<br />
+Pure c# processiing:
+<input type="checkbox" @bind="purecs" />
+@code {
+    Cropper cropper;
+    IBrowserFile file;
+    bool purecs = false;
+    double width;
+    double height;
+    string imgUrl = "";
+    string prompt = "Image cropped! Parsing to base64...";
+    bool parsing = false;
+    string enableProportion = "false";
+    double proportion = 1d;
+    double ratio = 1;
+    bool isCropLocked = false;
+    bool isImageLocked = false;
+
+    void SizeChanged((double,double) t)
+    {
+        width = t.Item1;
+        height = t.Item2;
+    }
+
+    void OnRatioChange(ChangeEventArgs args)
+    {
+        ratio = int.Parse(args.Value.ToString()) / 100.0;
+    }
+    protected override void OnInitialized()
+    {
+
+        base.OnInitialized();
+    }
+
+    async Task OnInputFileChange(InputFileChangeEventArgs args)
+    {
+        await JSRuntime.InvokeVoidAsync("console.log", DateTime.Now.ToString());
+        file = args.File;
+    }
+    async Task DoneCrop()
+    {
+        var args = await cropper.GetCropedResult();
+        file = null;
+        parsing = true;
+        base.StateHasChanged();
+        await Task.Delay(10);// a hack, otherwise prompt won't show
+        await JSRuntime.InvokeVoidAsync("console.log", "converted!");
+        var base64string = await args.GetBase64Async();
+        imgUrl = $"data:image/png;base64,{base64string}";
+        parsing = false;
+    }
+
+    private void DisplayInfo()
+    {
+        var cropInfo = cropper.GetCropInfo();
+        Console.WriteLine(cropInfo);
+
+    }
+
+}
+<style>
+    @@import url("https://fastly.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css");
+</style>
