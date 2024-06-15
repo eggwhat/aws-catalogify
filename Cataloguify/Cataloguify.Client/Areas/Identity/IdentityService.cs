@@ -59,14 +59,19 @@ public class IdentityService : IIdentityService
 
     public async Task Logout()
     {
-        await _localStorage.RemoveItemAsync("Token");
         Token = null;
+        await _localStorage.RemoveItemAsync("Token");
+
         Email = null;
-        Username = null;
-        IsAuthenticated = false;
         await _localStorage.RemoveItemAsync("Email");
+
+        Username = null;
         await _localStorage.RemoveItemAsync("Username");
+
+        IsAuthenticated = false;
         await _localStorage.SetItemAsStringAsync("IsAuthenticated", IsAuthenticated.ToString());
+
+        await _localStorage.RemoveItemAsync("searchImagesCriteria");
         _navigationManager.NavigateTo("signin", forceLoad: true);
     }
 }
