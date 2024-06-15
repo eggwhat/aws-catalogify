@@ -46,7 +46,7 @@ public class FunctionTest
         // Arrange
         var request = new APIGatewayHttpApiV2ProxyRequest
         {
-            Body = JsonConvert.SerializeObject(new { Email = "test@example.com", Password = "password123" })
+            Body = JsonConvert.SerializeObject(new { Email = "test@example.com", Password = "password" })
         };
 
         _mockDynamoDBHelper.Setup(x => x.GetUserByEmailAsync(It.IsAny<string>())).ReturnsAsync((Documents.User)null);
@@ -68,7 +68,7 @@ public class FunctionTest
             Body = JsonConvert.SerializeObject(new { Email = "test@example.com", Password = "wrongpassword" })
         };
 
-        var user = new Documents.User { Email = "test@example.com", Password = "password123" };
+        var user = new Documents.User { Email = "test@example.com", Password = "password" };
         _mockDynamoDBHelper.Setup(x => x.GetUserByEmailAsync(It.IsAny<string>())).ReturnsAsync(user);
 
         // Act
@@ -107,7 +107,7 @@ public class FunctionTest
         // Arrange
         var request = new APIGatewayHttpApiV2ProxyRequest
         {
-            Body = JsonConvert.SerializeObject(new { Email = "test@example.com", Password = "password123" })
+            Body = JsonConvert.SerializeObject(new { Email = "test@example.com", Password = "password" })
         };
 
         _mockDynamoDBHelper.Setup(x => x.GetUserByEmailAsync(It.IsAny<string>())).ThrowsAsync(new System.Exception("Database error"));
@@ -120,6 +120,98 @@ public class FunctionTest
         response.Body.Should().Be(JsonConvert.SerializeObject(new { Message = "An error occurred during signup" }));
     }
 
+    [Fact]
+    public async Task SignUpAsync_RequestBodyIsEmpty_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new APIGatewayHttpApiV2ProxyRequest
+        {
+            Body = ""
+        };
+
+        // Act
+        var response = await _functions.SignUpAsync(request, _mockContext.Object);
+
+        // Assert
+        response.StatusCode.Should().Be(400);
+        response.Body.Should().Be(JsonConvert.SerializeObject(new { Message = "Request body is empty" }));
+    }
+
+    [Fact]
+    public async Task SignUpAsync_InvalidUserData_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new APIGatewayHttpApiV2ProxyRequest
+        {
+            Body = JsonConvert.SerializeObject(new { Username = "", Email = "", Password = "" })
+        };
+
+        // Act
+        var response = await _functions.SignUpAsync(request, _mockContext.Object);
+
+        // Assert
+        response.StatusCode.Should().Be(400);
+        response.Body.Should().Be(JsonConvert.SerializeObject(new { Message = "Invalid user data" }));
+    }
+
+    [Fact]
+    public async Task SignUpAsync_UserAlreadySignedUp_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new APIGatewayHttpApiV2ProxyRequest
+        {
+            Body = JsonConvert.SerializeObject(new { Username = "testuser", Email = "test@example.com", Password = "password" })
+        };
+
+        var existingUser = new Documents.User { Email = "test@example.com" };
+        _mockDynamoDBHelper.Setup(x => x.GetUserByEmailAsync(It.IsAny<string>())).ReturnsAsync(existingUser);
+
+        // Act
+        var response = await _functions.SignUpAsync(request, _mockContext.Object);
+
+        // Assert
+        response.StatusCode.Should().Be(400);
+        response.Body.Should().Be(JsonConvert.SerializeObject(new { Message = "User already signed up" }));
+    }
+
+    [Fact]
+    public async Task SignUpAsync_ValidRequest_ReturnsCreated()
+    {
+        // Arrange
+        var request = new APIGatewayHttpApiV2ProxyRequest
+        {
+            Body = JsonConvert.SerializeObject(new { Username = "testuser", Email = "test@example.com", Password = "password" })
+        };
+
+        _mockDynamoDBHelper.Setup(x => x.GetUserByEmailAsync(It.IsAny<string>())).ReturnsAsync((Documents.User)null);
+        _mockDynamoDBContext.Setup(x => x.SaveAsync(It.IsAny<Documents.User>(), default)).Returns(Task.CompletedTask);
+
+        // Act
+        var response = await _functions.SignUpAsync(request, _mockContext.Object);
+
+        // Assert
+        response.StatusCode.Should().Be(201);
+        response.Body.Should().Be(JsonConvert.SerializeObject(new { Message = "User signed up successfully" }));
+    }
+
+    [Fact]
+    public async Task SignUpAsync_ExceptionThrown_ReturnsInternalServerError()
+    {
+        // Arrange
+        var request = new APIGatewayHttpApiV2ProxyRequest
+        {
+            Body = JsonConvert.SerializeObject(new { Username = "testuser", Email = "test@example.com", Password = "password" })
+        };
+
+        _mockDynamoDBHelper.Setup(x => x.GetUserByEmailAsync(It.IsAny<string>())).ThrowsAsync(new System.Exception("Database error"));
+
+        // Act
+        var response = await _functions.SignUpAsync(request, _mockContext.Object);
+
+        // Assert
+        response.StatusCode.Should().Be(500);
+        response.Body.Should().Be(JsonConvert.SerializeObject(new { Message = "An error occurred during signup" }));
+    }
 
 
 }
