@@ -5,9 +5,11 @@
 @using MudBlazor
 
 <MudPaper Class="pa-4">
+    <RadzenAlert AlertStyle="AlertStyle.Danger" @bind-Visible="showError" Close="@OnAlertClose">
+        @errorMessage
+    </RadzenAlert>
     <MudText Typo="Typo.h5">Upload Image</MudText>
-    <MudFileUpload FilesChanged="@((IEnumerable<IBrowserFile> files) => OnFilesChanged(files))"
->
+    <MudFileUpload T="IReadOnlyList<IBrowserFile>" FilesChanged="OnFilesChanged">
         <ButtonTemplate>
             <MudButton HtmlTag="label"
                        Variant="@MudBlazor.Variant.Filled"
@@ -21,6 +23,15 @@
 </MudPaper>
 
 @code {
+    private bool showError = false;
+    private string errorMessage = string.Empty;
+
+    private void OnAlertClose()
+    {
+        showError = false;
+        errorMessage = string.Empty;
+    }
+
     private async Task OnFilesChanged(IEnumerable<IBrowserFile> files)
     {
         const int maxAllowedSize = 10 * 1024 * 1024; // 10 MB limit
@@ -40,10 +51,16 @@
                     await stream.ReadAsync(buffer, 0, buffer.Length);
                     string base64Image = Convert.ToBase64String(buffer);
                     var response = await ImagesService.UploadImageAsync(base64Image);
-
-                  
+                    if (response.ErrorMessage == null)
+                    {
                         Snackbar.Add("Image uploaded successfully!", Severity.Success);
-                    
+                    }
+                    else
+                    {
+                        showError = true;
+                        errorMessage = $"Error during uploading image: {response.ErrorMessage.Message}";
+                        StateHasChanged();
+                    }
                 }
             }
             catch (Exception ex)
