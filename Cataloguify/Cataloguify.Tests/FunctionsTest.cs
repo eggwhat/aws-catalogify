@@ -373,4 +373,103 @@ public class FunctionTest
         _mockDynamoDBHelper.Verify(x => x.GetUserImagesAsync("test-user-id"), Times.Once);
     }
 
+    [Fact]
+    public async Task DeleteImage_SuccessfulDeletion_ReturnsOk()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var imageKey = Guid.NewGuid();
+        var request = new APIGatewayHttpApiV2ProxyRequest
+        {
+            QueryStringParameters = new Dictionary<string, string> { { "imageKey", $"{imageKey}" } },
+            RequestContext = new APIGatewayHttpApiV2ProxyRequest.ProxyRequestContext
+            {
+                Authorizer = new APIGatewayHttpApiV2ProxyRequest.AuthorizerDescription
+                {
+                    Lambda = new Dictionary<string, object>
+                    {
+                        { "UserId", JsonDocument.Parse($"\"{userId}\"").RootElement }
+                    }
+                }
+            }
+        };
+
+        _mockS3Client.Setup(x => x.DeleteObjectAsync(It.IsAny<DeleteObjectRequest>(), default)).ReturnsAsync(new DeleteObjectResponse());
+        _mockDynamoDBContext.Setup(x => x.LoadAsync<ImageInfo>(It.IsAny<object>(), default)).ReturnsAsync(new ImageInfo());
+        _mockDynamoDBContext.Setup(x => x.DeleteAsync(It.IsAny<ImageInfo>(), default)).Returns(Task.CompletedTask);
+
+        // Act
+        var response = await _functions.DeleteImage(request, _mockContext.Object);
+
+        // Assert
+        response.StatusCode.Should().Be(200);
+        response.Body.Should().Contain("Image deleted successfully");
+        _mockS3Client.Verify(x => x.DeleteObjectAsync(It.IsAny<DeleteObjectRequest>(), default), Times.Once);
+        _mockDynamoDBContext.Verify(x => x.LoadAsync<ImageInfo>(imageKey, userId, default), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteImage_MissingImageKeyParameter_ReturnsBadRequest()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var request = new APIGatewayHttpApiV2ProxyRequest
+        {
+            QueryStringParameters = new Dictionary<string, string>(),
+            RequestContext = new APIGatewayHttpApiV2ProxyRequest.ProxyRequestContext
+            {
+                Authorizer = new APIGatewayHttpApiV2ProxyRequest.AuthorizerDescription
+                {
+                    Lambda = new Dictionary<string, object>
+                    {
+                        { "UserId", JsonDocument.Parse($"\"{userId}\"").RootElement }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var response = await _functions.DeleteImage(request, _mockContext.Object);
+
+        // Assert
+        response.StatusCode.Should().Be(400);
+        response.Body.Should().Contain("Missing imageKey parameter");
+        _mockS3Client.Verify(x => x.DeleteObjectAsync(It.IsAny<DeleteObjectRequest>(), default), Times.Never);
+        _mockDynamoDBContext.Verify(x => x.LoadAsync<ImageInfo>(It.IsAny<object>(), default), Times.Never);
+        _mockDynamoDBContext.Verify(x => x.DeleteAsync(It.IsAny<ImageInfo>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteImage_ExceptionThrown_ReturnsInternalServerError()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var request = new APIGatewayHttpApiV2ProxyRequest
+        {
+            QueryStringParameters = new Dictionary<string, string> { { "imageKey", "test-image-key" } },
+            RequestContext = new APIGatewayHttpApiV2ProxyRequest.ProxyRequestContext
+            {
+                Authorizer = new APIGatewayHttpApiV2ProxyRequest.AuthorizerDescription
+                {
+                    Lambda = new Dictionary<string, object>
+                    {
+                        { "UserId", JsonDocument.Parse("\"{userId}\"").RootElement }
+                    }
+                }
+            }
+        };
+
+        _mockS3Client.Setup(x => x.DeleteObjectAsync(It.IsAny<DeleteObjectRequest>(), default)).ThrowsAsync(new System.Exception("S3 error"));
+
+        // Act
+        var response = await _functions.DeleteImage(request, _mockContext.Object);
+
+        // Assert
+        response.StatusCode.Should().Be(500);
+        response.Body.Should().Contain("An error occurred while deleting the image");
+        _mockS3Client.Verify(x => x.DeleteObjectAsync(It.IsAny<DeleteObjectRequest>(), default), Times.Once);
+        _mockDynamoDBContext.Verify(x => x.LoadAsync<ImageInfo>(It.IsAny<object>(), default), Times.Never);
+        _mockDynamoDBContext.Verify(x => x.DeleteAsync(It.IsAny<ImageInfo>(), default), Times.Never);
+    }
+
 }
