@@ -7,20 +7,31 @@
 @inject Radzen.DialogService DialogService
 
 <RadzenFieldset>
-    <RadzenStack Gap="1rem">
+    <RadzenStack class="rz-py-5 rz-mx-auto" Gap="1rem">
         <RadzenRow Gap="1rem" JustifyContent="JustifyContent.Center">
             <RadzenColumn Size="12" SizeSM="4">
                 <RadzenStack>
-                    <RadzenFormField Text="Results on page" Variant="Variant.Outlined">
+                    <RadzenFormField Text="Results on page" Variant="Variant.Outlined"
+                                     AllowFloatingLabel="false">
                         <RadzenNumeric @bind-Value="@TempSearchImagesModel.Results" />
+                    </RadzenFormField>
+                    <RadzenFormField Text="Search by tag" Variant="Variant.Outlined"
+                                     @oninput="@(args => OnNewTagChange(args?.Value?.ToString()))"
+                                     AllowFloatingLabel="false">
+                        <RadzenTextBox @bind-Value="@newTagValue" />
                     </RadzenFormField>
                 </RadzenStack>
             </RadzenColumn>
             <RadzenColumn Size="12" SizeSM="4">
                 <RadzenStack>
-                    <RadzenFormField Text="Sorting by uploaded at" Variant="Variant.Outlined">
+                    <RadzenFormField Text="Sorting by uploaded at" Variant="Variant.Outlined"
+                                     AllowFloatingLabel="false">
                         <RadzenDropDown Data="@directions" @bind-Value="@TempSearchImagesModel.SortOrder"
                                         TextProperty="Key" ValueProperty="Value" />
+                    </RadzenFormField>
+                    <RadzenFormField Variant="Variant.Outlined">
+                        <RadzenButton Text="Add new tag" Click="@AddNewTag"
+                                      Disabled="@(string.IsNullOrWhiteSpace(newTagValue))" />
                     </RadzenFormField>
                 </RadzenStack>
             </RadzenColumn>
@@ -77,7 +88,25 @@
         await base.OnInitializedAsync();
         TempSearchImagesModel = SearchImagesModel.DeepClone();
     }
+
+    private string newTagValue = string.Empty;
     
+    private void OnNewTagChange(string value)
+    {
+        newTagValue = value;
+    }
+
+    private void AddNewTag()
+    {
+        newTagValue = char.ToUpper(newTagValue[0]) + newTagValue[1..].ToLower();
+
+        var list = TempSearchImagesModel.Tags.ToHashSet();
+        list.Add(newTagValue);
+        TempSearchImagesModel.Tags = list;
+
+        newTagValue = string.Empty;
+    }
+
     private void HandleFiltering()
     {
         SearchImagesModel.Page = TempSearchImagesModel.Page;
