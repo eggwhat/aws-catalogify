@@ -10,6 +10,8 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using Cataloguify.Documents;
 using Cataloguify.Dynamo;
+using Cataloguify.Entities;
+using Cataloguify.Requests;
 using FluentAssertions;
 using Moq;
 using Newtonsoft.Json;
@@ -301,6 +303,74 @@ public class FunctionTest
         _mockRekognition.Verify(x => x.DetectLabelsAsync(It.IsAny<DetectLabelsRequest>(), default), Times.Once);
         _mockS3Client.Verify(x => x.PutObjectAsync(It.IsAny<PutObjectRequest>(), default), Times.Never);
         _mockDynamoDBContext.Verify(x => x.SaveAsync(It.IsAny<ImageInfo>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetImages_SuccessfulRetrieval_ReturnsOk()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var request = new APIGatewayHttpApiV2ProxyRequest
+        {
+            Body = JsonConvert.SerializeObject(new SearchImagesRequest { Tags = new List<string>(), SortOrder = "asc", Page = 1, Results = 10 }),
+            RequestContext = new APIGatewayHttpApiV2ProxyRequest.ProxyRequestContext
+            {
+                Authorizer = new APIGatewayHttpApiV2ProxyRequest.AuthorizerDescription
+                {
+                    Lambda = new Dictionary<string, object>
+                    {
+                        { "UserId", JsonDocument.Parse($"\"{userId}\"").RootElement }
+                    }
+                }
+            }
+        };
+
+        var images = new List<Documents.ImageInfo>
+        {
+            new Documents.ImageInfo { ImageKey = Guid.NewGuid(), UserId = userId, Tags = new List<string> { "tag1" }, UploadedAt = DateTime.UtcNow }
+        };
+
+        _mockDynamoDBHelper.Setup(x => x.GetUserImagesAsync(userId.ToString())).ReturnsAsync(images);
+
+        // Act
+        var response = await _functions.GetImages(request, _mockContext.Object);
+
+        // Assert
+        response.StatusCode.Should().Be(200);
+        response.Headers["Content-Type"].Should().Be("application/json");
+        var responseBody = JsonConvert.DeserializeObject<PagedResponse<IEnumerable<Entities.Image>>>(response.Body);
+        responseBody.Content.Should().NotBeEmpty();
+        _mockDynamoDBHelper.Verify(x => x.GetUserImagesAsync(userId.ToString()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetImages_ExceptionThrown_ReturnsInternalServerError()
+    {
+        // Arrange
+        var request = new APIGatewayHttpApiV2ProxyRequest
+        {
+            Body = JsonConvert.SerializeObject(new SearchImagesRequest { Tags = new List<string>(), SortOrder = "asc", Page = 1, Results = 10 }),
+            RequestContext = new APIGatewayHttpApiV2ProxyRequest.ProxyRequestContext
+            {
+                Authorizer = new APIGatewayHttpApiV2ProxyRequest.AuthorizerDescription
+                {
+                    Lambda = new Dictionary<string, object>
+                    {
+                        { "UserId", JsonDocument.Parse("\"test-user-id\"").RootElement }
+                    }
+                }
+            }
+        };
+
+        _mockDynamoDBHelper.Setup(x => x.GetUserImagesAsync("test-user-id")).ThrowsAsync(new System.Exception("DynamoDB error"));
+
+        // Act
+        var response = await _functions.GetImages(request, _mockContext.Object);
+
+        // Assert
+        response.StatusCode.Should().Be(500);
+        response.Body.Should().Contain("An error occurred during retrieving images");
+        _mockDynamoDBHelper.Verify(x => x.GetUserImagesAsync("test-user-id"), Times.Once);
     }
 
 }
