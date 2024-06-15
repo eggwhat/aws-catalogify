@@ -1,249 +1,169 @@
 @page "/upload"
-@using Cataloguify.Client.Areas.Images
-@inject IImagesService ImagesService
-@inject ISnackbar Snackbar
-@using MudBlazor
-@using Blazor.Cropper
 @inject IJSRuntime JSRuntime;
 
-<div class="container">
-    <div class="left-panel">
-        <h1>Image Cropper</h1>
-        <InputFile id="input1" OnChange="OnInputFileChange"></InputFile>
-        <select @bind-value="enableProportion" @bind-value:event="onchange" class="select is-rounded my-2">
-            <option value="true">Enable Proportion</option>
-            <option value="false">Disable Proportion</option>
-        </select>
-        @if (bool.Parse(enableProportion))
-        {
-            <input type="number" @bind-value="proportion" placeholder="Proportion" class="input is-rounded" />
-        }
-        <br />
-        <label class="checkbox px-2">
-            Pure C# processing:
-            <input type="checkbox" @bind="purecs" />
-        </label>
-    </div>
-    <div class="right-panel">
-        @if (!string.IsNullOrEmpty(imgUrl) && !parsing)
-        {
-            <div class="box">
-                <h2 class="is-size-4 has-text-centered">Crop Result:</h2>
-                <img src="@imgUrl" class="image is-centered" />
-            </div>
-        }
-    </div>
-</div>
-
+<h1>Cropper</h1>
+<h2>1. Load from file</h2>
+<InputFile OnChange="OnInputFileChange"></InputFile>
+<h2>2. Load from URL</h2>
+<input @bind="webimgurl" />
+<button @onclick="FetchImage">load</button>
+@if (parsing)
+{
+    <center>
+        <h2>@prompt</h2>
+    </center>
+}
+<center>
+    <h2>Crop Result:</h2>
+    <img id="my-img" />
+</center>
 @if (file != null)
 {
     <div class="modal is-active">
         <div class="modal-background"></div>
         <div class="modal-card">
             <header class="modal-card-head">
-                <p class="modal-card-title">Adjust your crop</p>
+                <p class="modal-card-title">Modal title</p>
                 <button class="delete" aria-label="close" @onclick="()=>file=null"></button>
             </header>
-            <section class="modal-card-body">
-                <Cropper MaxCropedHeight="500" MaxCropedWidth="500" @ref="cropper"
-                        AspectRatio="proportion != 0 ? proportion : 1"
-                        CropperHeight="400" RequireAspectRatio="@bool.Parse(enableProportion)"
-                        InputId="input1" ImageFile="file" @bind-Ratio="ratio"
-                        OffsetX="10" OffsetY="11" InitCropWidth="50" InitCropHeight="50"
-                        AnimeGifEnable="true" PureCSharpProcessing="purecs"
-                        IsCropLocked="isCropLocked" IsImageLocked="isImageLocked"
-                        OnSizeChanged="SizeChanged">
-                </Cropper>
-
+            <section class="modal-card-body" style="overflow-x: hidden">
+                @if (show)
+                {
+                    <Cropper MaxCropedHeight="500" CropperHeight="400" MaxCropedWidth="500" @ref="cropper" AspectRatio="proportion==0?1:proportion"
+                             RequireAspectRatio="bool.Parse(enableProportion)" ImageFile="file" @bind-Ratio="ratio"
+                             AnimeGifEnable="true"
+                             OffsetX="offsetx"
+                             OffsetY="offsety"
+                             InitCropWidth="initw"
+                             InitCropHeight="inith"
+                             PureCSharpProcessing="purecs"
+                             IsCropLocked="isCropLocked"
+                             IsImageLocked="isImageLocked"
+                             Quality="quality"
+                             OnSizeChanged="t=>{
+                        width = t.Item1;
+                        height = t.Item2;
+                    }"></Cropper>
+                }
             </section>
             <footer class="modal-card-foot">
-                <button class="button is-success" @onclick="DoneCrop">Done</button>
-                <button class="button is-info" @onclick="@DisplayInfo">Info</button>
+                <div>
+                    <button class="button is-success" @onclick="DoneCrop">Done</button>
+                    <button class="button is-success" @onclick="SaveState">SaveState</button>
+                    <button class="button is-success" @onclick="RestoreState">RestoreState</button>
+                    <br />
+                    @if (cropper != null)
+                    {
+                        <div>
+                            width: @width |
+                            height: @height
+                        </div>
+                    }
+                    <div> IsCropLocked:<input type="checkbox" @bind="isCropLocked" /></div>
+                    <div>IsImageLocked:<input type="checkbox" @bind="isImageLocked" /></div>
+                    @if (cropper != null)
+                    {
+                        <input type="range" min="@(cropper.MinRatio*100)" max="@(200)" value="@(ratio*100)"
+                               @oninput="OnRatioChange" />
+                    }
+                </div>
             </footer>
         </div>
     </div>
 }
-
-@if (!string.IsNullOrEmpty(imgUrl) && !parsing)
+else
 {
-    <div class="box">
-        <h2 class="is-size-4 has-text-centered">Crop Result:</h2>
-        <img src="@imgUrl" class="image is-centered" />
-        <button class="button is-primary" @onclick="UploadImage">Upload Image</button> <!-- Upload button -->
-    </div>
+    offsetx = 0;
+    offsety = 0;
+    initw = 50;
+    inith = 50;
 }
-
-
+<br />
+<select @bind-value="enableProportion" @bind-value:event="onchange">
+    <option value="true">Enable proportion</option>
+    <option value="false">Disable proportion</option>
+</select>
+@if (bool.Parse(enableProportion))
+{
+    <input type="number" @bind-value="proportion" placeholder="proportion" />
+}
+<br />
+Quality, only works for jpg and webp
+<input type="range" min="1" max="100" @bind-value="quality" />
+<br />
+Pure c# processiing:
+<input type="checkbox" @bind="purecs" />
 @code {
     Cropper cropper;
     IBrowserFile file;
-    bool purecs = false;
     double width;
     double height;
-    string imgUrl = "";
+    string webimgurl = "";
+    bool purecs = false;
+    bool show = true;
+    string prompt = "Image cropped! Parsing to base64...";
     bool parsing = false;
     string enableProportion = "false";
     double proportion = 1d;
     double ratio = 1;
     bool isCropLocked = false;
     bool isImageLocked = false;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-{
-    if (firstRender)
-    {
-        await Task.Delay(100); 
-        if (cropper == null)
-        {
-            Console.WriteLine("Cropper component is still not initialized. Attempting reinitialization.");
-            await InvokeAsync(StateHasChanged); 
-        }
-        else
-        {
-            Console.WriteLine("Cropper component is now ready and initialized.");
-        }
-    }
-}
-
-
-
-    async Task OnInputFileChange(InputFileChangeEventArgs args)
-    {
-        if (args.File != null)
-        {
-            Console.WriteLine("File loaded successfully.");
-            file = args.File;
-            // Ensure UI updates, especially if UI elements depend on file being loaded
-            StateHasChanged();
-        }
-        else
-        {
-            Console.WriteLine("Failed to load file.");
-        }
-    }
-
-    async Task DoneCrop()
-{
-    if (cropper == null)
-    {
-        Console.WriteLine("Attempt to crop image without an initialized cropper component.");
-        Snackbar.Add("Cropper is not ready. Please try again.", Severity.Error);
-        return;
-    }
-
-    if (file == null)
-    {
-        Console.WriteLine("Attempt to crop image without a loaded file.");
-        Snackbar.Add("No file loaded. Please upload a file.", Severity.Error);
-        return;
-    }
-
-    try
-    {
-        var args = await cropper.GetCropedResult();
-        if (args == null)
-        {
-            Console.WriteLine("Failed to retrieve cropped result.");
-            Snackbar.Add("Cropping failed.", Severity.Error);
-            return;
-        }
-        parsing = true;
-        var base64string = await args.GetBase64Async();
-        imgUrl = $"data:image/png;base64,{base64string}";
-        parsing = false;
-        Snackbar.Add("Image cropped successfully!", Severity.Success);
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error during cropping: {ex.Message}");
-        Snackbar.Add("Error during cropping: " + ex.Message, Severity.Error);
-    }
-    finally
-    {
-        file = null; // Ensure file is reset after processing
-        StateHasChanged(); // Refresh UI to reflect changes
-    }
-}
-
-
-
-    private void DisplayInfo()
-    {
-        if (cropper != null)
-        {
-            var cropInfo = cropper.GetCropInfo();
-            Console.WriteLine($"Crop Info: {cropInfo}");
-        }
-        else
-        {
-            Console.WriteLine("Cropper info requested but cropper is not initialized.");
-        }
-    }
-
-
-    void SizeChanged((double, double) t)
-    {
-        (width, height) = t;
-    }
-
+    int offsetx, offsety;
+    int initw = 50;
+    int inith = 50;
+    int quality = 100;
+    CropInfo state;
+    HttpClient client = new HttpClient();
     void OnRatioChange(ChangeEventArgs args)
     {
         ratio = int.Parse(args.Value.ToString()) / 100.0;
     }
-
-    async Task UploadImage()
+    void SaveState()
     {
-        if (string.IsNullOrEmpty(imgUrl))
+        state = cropper.GetCropInfo();
+    }
+    async Task RestoreState()
+    {
+        if (state != null)
         {
-            Snackbar.Add("No image to upload.", Severity.Warning);
-            return;
-        }
-
-        // Optional: Convert from base64 to a more suitable format if necessary
-        // Normally, the API might require the image in a specific format or just the base64 string
-
-        var response = await ImagesService.UploadImageAsync(imgUrl);
-        if (response.IsSuccessStatusCode)
-        {
-            Snackbar.Add("Image uploaded successfully!", Severity.Success);
-        }
-        else
-        {
-            Snackbar.Add("Failed to upload image. Error: " + response.ErrorMessage, Severity.Error);
+            (offsetx, offsety, initw, inith, ratio) = state.GetInitParams();
+            show = false;
+            StateHasChanged();
+            await Task.Delay(10);
+            show = true;
         }
     }
 
+    async Task FetchImage()
+    {
+        var stream = await client.GetStreamAsync(webimgurl);
+        file = new StreamFile(stream);
+    }
 
+    protected override void OnInitialized()
+    {
+
+        base.OnInitialized();
+    }
+
+    async Task OnInputFileChange(InputFileChangeEventArgs args)
+    {
+        await JSRuntime.InvokeVoidAsync("console.log", DateTime.Now.ToString());
+        file = args.File;
+    }
+    async Task DoneCrop()
+    {
+        var args = await cropper.GetCropedResult();
+        file = null;
+        parsing = true;
+        base.StateHasChanged();
+        await Task.Delay(10);// a hack, otherwise prompt won't show
+        await JSRuntime.InvokeVoidAsync("console.log", "converted!");
+        var bs = await args.GetDataAsync();
+        await JSRuntime.SetImageAsync(bs, "my-img", args.Format.DefaultMimeType);
+        parsing = false;
+    }
 }
-
-
 <style>
-    @@import url("https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css");
-    .container {
-        display: flex;
-        justify-content: space-between;
-    }
-    .left-panel, .right-panel {
-        flex: 1;
-    }
-    .modal-card-body {
-        padding: 20px;
-    }
-    .image {
-        max-width: 100%;
-        height: auto;
-        display: block;
-        margin: 0 auto;
-    }
-    .box {
-        margin-top: 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1);
-    }
-    .notification {
-        margin-top: 20px;
-    }
-    .select, .input {
-        margin-top: 10px;
-    }
+    @@import url("https://fastly.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css");
 </style>
