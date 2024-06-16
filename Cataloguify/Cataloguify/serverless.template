@@ -6,7 +6,42 @@
     "ImageS3Bucket": {
       "Type": "AWS::S3::Bucket",
       "Properties": {
-        "BucketName": "cataloguify-images"
+        "BucketName": "cataloguify-images",
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        },
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Id": "TransitionToIA",
+              "Status": "Enabled",
+              "Prefix": "",
+              "Transitions": [
+                {
+                  "TransitionInDays": 30,
+                  "StorageClass": "STANDARD_IA"
+                }
+              ]
+            },
+            {
+              "Id": "TransitionToGlacier",
+              "Status": "Enabled",
+              "Prefix": "",
+              "Transitions": [
+                {
+                  "TransitionInDays": 90,
+                  "StorageClass": "GLACIER"
+                }
+              ]
+            },
+            {
+              "Id": "ExpireOldVersions",
+              "Status": "Enabled",
+              "Prefix": "",
+              "NoncurrentVersionExpirationInDays": 30
+            }
+          ]
+        }
       }
     },
     "HttpApi": {
