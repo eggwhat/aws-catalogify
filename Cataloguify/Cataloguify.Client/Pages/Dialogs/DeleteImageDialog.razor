@@ -1,0 +1,51 @@
+@using Cataloguify.Client.Areas.Images
+@using Cataloguify.Client.DTO
+@using Radzen
+@inject DialogService DialogService
+@inject IImagesService ImagesService
+
+<RadzenStack Gap="1rem">
+    <RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween"
+                 Style="height: 100%;">
+            @if (showProgressBar)
+            {
+                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center">
+                    <RadzenProgressBarCircular ShowValue="true" ProgressBarStyle="ProgressBarStyle.Light"
+                                               Mode="ProgressBarMode.Indeterminate"
+                                               Size="ProgressBarCircularSize.Large">
+                        <Template>Deleting</Template>
+                    </RadzenProgressBarCircular>
+                </RadzenStack>
+            }
+            else
+            {
+                <RadzenStack class="rz-p-4" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center">
+                    <RadzenButton Click="@(() => DeleteImage(ImageDto))" Variant="Variant.Flat" Text="Delete"
+                                  Style="width: 100px"/>
+                    <RadzenButton Click="@(() => DialogService.Close(true))" Variant="Variant.Flat" Text="Cancel"
+                                  Style="width: 100px; background-color: #1b6ec2"/>
+                </RadzenStack>
+            }
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter]
+    public ImageDto ImageDto { get; set; }
+    
+    private bool showProgressBar;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+    
+    private async void DeleteImage(ImageDto imageDto)
+    {
+        showProgressBar = true;
+        await ImagesService.DeleteImageAsync(imageDto.ImageKey);
+        imageDto.DeleteSubmitted = true;
+        DialogService.Close(true);
+        showProgressBar = false;
+    }
+}

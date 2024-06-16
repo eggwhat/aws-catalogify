@@ -1,5 +1,6 @@
 ﻿@using Blazored.LocalStorage
 @using Cataloguify.Client.Areas.Identity
+@using MudBlazor
 @inject IIdentityService IdentityService
 @inject ILocalStorageService LocalStorage;
 @inherits LayoutComponentBase
@@ -33,12 +34,15 @@
         <article class="content px-4">
             @Body
         </article>
-        
+
+        <MudThemeProvider/>
     </main>
 
   
 </div>
 <AppFooter/>
+<RadzenDialog />
+
 @code {
 
     private bool _isUserAuthenticated;

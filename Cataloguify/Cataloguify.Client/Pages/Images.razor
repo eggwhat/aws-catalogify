@@ -2,6 +2,7 @@
 @using Cataloguify.Client.Areas.Images
 @using Cataloguify.Client.DTO
 @using Cataloguify.Client.Models
+@using Cataloguify.Client.Pages.Dialogs
 @using Radzen
 @using MudBlazor
 @using DialogOptions = Radzen.DialogOptions
@@ -16,9 +17,12 @@
 
 <h1 class="rz-p-8 search-font">Your images</h1>
 
-<RadzenStack Gap="1rem" class="rz-py-5 rz-mx-auto" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Style="max-width: 1080px">
-    <RadzenButton Text="Filtering Criteria" Click="@OpenSearchDialog" Icon="pageview" class="separate-button standard-button "/>
-    <RadzenButton Text="Clear filters" Click="@(() => ClearFilters())" Icon="close" class="separate-button clear-button"/>
+<RadzenStack Gap="1rem" class="rz-mx-auto" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start"
+             JustifyContent="JustifyContent.SpaceBetween" Style="max-width: 1080px">
+    <RadzenStack Orientation="Orientation.Horizontal">
+        <RadzenButton Text="Filtering Criteria" Click="@OpenSearchDialog" Icon="pageview" class="separate-button standard-button"/>
+        <RadzenButton Text="Clear filters" Click="@ClearFilters" Icon="close" class="separate-button clear-button"/>
+    </RadzenStack>
 </RadzenStack>
 
 @if (!pageInitialized)
@@ -26,7 +30,7 @@
     <div style="display: flex; justify-content: center; align-items: center;">
         <RadzenProgressBarCircular ShowValue="true" ProgressBarStyle="ProgressBarStyle.Light" 
                                    Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large">
-            <Template>Loading...</Template>
+            <Template>Loading</Template>
         </RadzenProgressBarCircular>
     </div>
 }
@@ -51,7 +55,10 @@
             <RadzenCard>
                 <RadzenRow>
                     <RadzenColumn Size="7">
-                        <RadzenImage Path="@image.ImageUrl" Style="width: 30rem;" AlternateText="url image"/>
+                        <RadzenImage Path="@image.ImageUrl" Style="width: 30rem; cursor: pointer"
+                                     AlternateText="No image found"
+                                     @onclick="@(() => OpenImageDialog(image.ImageUrl))">
+                        </RadzenImage>
                     </RadzenColumn>
                     <RadzenColumn Size="3">
                         <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-my-0">Uploaded At</RadzenText>
@@ -67,7 +74,11 @@
                 <hr style="border: none; background-color: rgba(0,0,0,.2); height: 1px; margin: 1rem 0;"/>
                 <RadzenRow>
                     <RadzenColumn Size="12" Class="rz-text-truncate">
-                        <b>@(image.ImageKey)</b>
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween">
+                            <b>Image Key: @(image.ImageKey)</b>
+                            <RadzenButton Text="Delete image" ButtonStyle="ButtonStyle.Danger"
+                                          Click="@(() => OpenDeleteImageDialog(image))" />
+                        </RadzenStack>
                     </RadzenColumn>
                 </RadzenRow>
             </RadzenCard>
@@ -77,7 +88,7 @@
 
 @if (pageInitialized && totalElements != 0)
 {
-    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
+    <RadzenStack class="rz-pb-6" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
         <MudPagination Count="@totalPages" SelectedChanged="@SelectedPageChanged"
                        Selected="@searchImagesModel.Page"
                        Rectangular="true" ShowFirstButton="true" ShowLastButton="true"/>
@@ -196,14 +207,40 @@
     
     private async Task OpenSearchDialog()
     {
-        // await DialogService.OpenAsync<ImagesSearchDialog>($"Filter all images by criteria:",
-        //     new Dictionary<string, object>() { { "SearchImagesModel", searchImagesModel } },
-        //     new DialogOptions()
-        //     {
-        //         Width = "800px", Height = "650px", Resizable = true, Draggable = true,
-        //         AutoFocusFirstElement = false
-        //     });
+        await DialogService.OpenAsync<SearchImagesDialog>("Filter all images by criteria:",
+            new Dictionary<string, object>() { { "SearchImagesModel", searchImagesModel } },
+            new DialogOptions()
+            {
+                Width = "800px", Height = "600px", Resizable = true, Draggable = true,
+                AutoFocusFirstElement = false
+            });
         await SearchImages();
+    }
+    
+    private async Task OpenImageDialog(string imageUrl)
+    {
+        await DialogService.OpenAsync<ShowImageDialog>("",
+            new Dictionary<string, object>() { { "ImageUrl", imageUrl } },
+            new DialogOptions()
+            {
+                Width = "900px", Height = "650px", Resizable = true, Draggable = true,
+                AutoFocusFirstElement = false
+            });
+    }
+    
+    private async Task OpenDeleteImageDialog(ImageDto imageDto)
+    {
+        await DialogService.OpenAsync<DeleteImageDialog>("Are you sure? This action cannot be undone!",
+            new Dictionary<string, object>() { { "ImageDto", imageDto } },
+            new DialogOptions()
+            {
+                Width = "500px", Height = "180px", Resizable = false, Draggable = false,
+                AutoFocusFirstElement = false
+            });
+        if (imageDto.DeleteSubmitted)
+        {
+            await SearchImages();
+        }
     }
     
     private async Task ClearFilters()
