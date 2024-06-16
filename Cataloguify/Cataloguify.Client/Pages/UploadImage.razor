@@ -6,7 +6,8 @@
 <h1 class="title">Cropper</h1>
 <h2 class="subtitle">I. Load from file</h2>
 <InputFile OnChange="OnInputFileChange" class="input"></InputFile>
-<h2 class="subtitle">II. Load from URL</h2>
+
+@* <h2 class="subtitle">II. Load from URL</h2>
 <div class="field has-addons">
     <div class="control is-expanded">
         <input class="input" @bind="webimgurl" placeholder="Enter image URL" />
@@ -14,7 +15,7 @@
     <div class="control">
         <button class="button is-info" @onclick="FetchImage">Load</button>
     </div>
-</div>
+</div> *@
 
 
 @if (parsing)
@@ -115,9 +116,10 @@ else
 
 <br />
 
-<label class="checkbox">Pure C# processing:
+@* <label class="checkbox">Pure C# processing:
     <input type="checkbox" @bind="purecs" />
-</label>
+</label> *@
+
 @code {
     Cropper cropper;
     IBrowserFile file;
