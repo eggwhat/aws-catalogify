@@ -19,7 +19,7 @@
     <PackageReference Include="AWSSDK.Rekognition" Version="3.7.302.25" />
     <PackageReference Include="AWSSDK.S3" Version="3.7.308.7" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="9.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.6.0" />
   </ItemGroup>
 </Project>

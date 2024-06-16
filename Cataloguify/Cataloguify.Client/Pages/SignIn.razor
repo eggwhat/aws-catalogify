@@ -1,0 +1,123 @@
+@page "/signin"
+@using Cataloguify.Client.Areas.Identity
+@using Cataloguify.Client.Models
+@inject IIdentityService IdentityService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<style>
+    /* General body and font styles */
+    body {
+        margin: 0;
+        font-family: 'Roboto', sans-serif;
+        background: #f4f4f9;
+        color: #333;
+    }
+
+    /* Form container with adaptive sizing and padding */
+    .form-container {
+        width: 100%;
+        max-width: 600px;
+        background: rgba(255, 255, 255, 0.85);
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    /* Link and button styles for interaction */
+    a, button {
+        transition: color 0.3s ease, background-color 0.3s ease;
+    }
+
+    a:hover, button:hover {
+        color: #007BFF; /* Highlight color on hover */
+    }
+</style>
+
+<RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center">
+    <div class="form-container">
+        <div class="sign-in-up-pre-info">
+            <h2>Welcome to Cataloguify</h2>
+            <p>Please sign in to access your account and manage your photos.</p>
+            <h3>Sign In</h3>
+        </div>
+        <RadzenAlert AlertStyle="AlertStyle.Danger" @bind-Visible="showError" Close="@OnAlertClose">
+            @errorMessage
+        </RadzenAlert>
+        <RadzenTemplateForm Data="@signInModel" Submit="@(async (SignInModel args) => { await HandleSignIn(); })">
+            <RadzenFieldset>
+                <RadzenStack class="rz-p-8" Gap="1rem">
+                    <RadzenTextBox Name="email" Placeholder="Email" Style="width: 100%;"
+                                   @bind-Value="signInModel.Email"/>
+                    <RadzenRequiredValidator Component="email" Text="Email is required"/>
+                    <RadzenEmailValidator Component="email" Text="Email is invalid"/>
+
+                    <RadzenPassword Name="password" Placeholder="Password" Style="width: 100%;"
+                                    @bind-Value="signInModel.Password"/>
+                    <RadzenRequiredValidator Component="password" Text="Password is required"/>
+
+                    @if (showProgressBar)
+                    {
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center">
+                            <RadzenProgressBarCircular ShowValue="true" ProgressBarStyle="ProgressBarStyle.Light"
+                                                       Mode="ProgressBarMode.Indeterminate"
+                                                       Size="ProgressBarCircularSize.Large">
+                                <Template>Signing In</Template>
+                            </RadzenProgressBarCircular>
+                        </RadzenStack>
+                    }
+                    else
+                    {
+                        <RadzenButton ButtonType="ButtonType.Submit" ButtonStyle="ButtonStyle.Primary"
+                                      Size="ButtonSize.Large" Text="Sign In"/>   
+                    }
+                </RadzenStack>
+            </RadzenFieldset>
+        </RadzenTemplateForm>
+
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="/signup">Create Account</a>
+        </div>
+    </div>
+</RadzenStack>
+
+@code {
+    private SignInModel signInModel = new SignInModel();
+    private bool showError = false;
+    private string errorMessage = string.Empty;
+    private bool showProgressBar;
+
+    private void OnAlertClose()
+    {
+        showError = false;
+        errorMessage = string.Empty;
+    }
+    
+    private async Task HandleSignIn()
+    {
+        showProgressBar = true;
+        
+        try
+        {
+            var response = await IdentityService.SignInAsync(signInModel.Email, signInModel.Password);
+            if (response.ErrorMessage == null)
+            {
+                NavigationManager.NavigateTo("/", true);
+            }
+            else
+            {
+                showError = true;
+                errorMessage = $"Error during sign in: {response.ErrorMessage.Message}";
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            showError = true;
+            errorMessage = $"Error during sign in: {ex.Message}";
+            StateHasChanged(); 
+        }
+
+        showProgressBar = false;
+    }
+}

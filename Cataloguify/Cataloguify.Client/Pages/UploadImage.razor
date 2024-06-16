@@ -1,0 +1,388 @@
+@page "/upload"
+@using Cataloguify.Client.Areas.Images
+@inject IImagesService ImagesService
+@inject IJSRuntime JSRuntime;
+@inject NavigationManager NavigationManager
+
+<h1 class="title">Cropper</h1>
+<h2 class="subtitle">Load from file</h2>
+<InputFile OnChange="OnInputFileChange" class="input-file" accept=".jpg,.jpeg,.png"></InputFile>
+   
+
+
+@* <h2 class="subtitle">II. Load from URL</h2>
+<div class="field has-addons">
+    <div class="control is-expanded">
+        <input class="input" @bind="webimgurl" placeholder="Enter image URL" />
+    </div>
+    <div class="control">
+        <button class="button is-info" @onclick="FetchImage">Load</button>
+    </div>
+</div> *@
+
+
+@if (parsing)
+{
+    <div class="notification is-primary is-light has-text-centered">
+        <h2>@prompt</h2>
+    </div>
+}
+
+@if (notificationMessage != null)
+{
+    <div class="notification is-success">
+        @notificationMessage
+    </div>
+}
+
+<div class="box">
+    <h2 class="is-size-4 has-text-centered">Crop Result:</h2>
+    <figure class="image is-4by3">
+        <img id="my-img" alt="Crop result"/>
+    </figure>
+     <button class="button is-primary" @onclick="SaveImageToService">Save Image to Service</button>
+
+
+</div>
+
+@if (file != null)
+{
+    <div class="modal is-active">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Modal title</p>
+                <button class="delete" aria-label="close" @onclick="()=>file=null"></button>
+            </header>
+            <section class="modal-card-body" style="overflow-x: hidden">
+                @if (show)
+                {
+                    <Cropper MaxCropedHeight="500" CropperHeight="400" MaxCropedWidth="500" @ref="cropper" AspectRatio="proportion==0?1:proportion"
+                             RequireAspectRatio="bool.Parse(enableProportion)" ImageFile="file" @bind-Ratio="ratio"
+                             AnimeGifEnable="true"
+                             OffsetX="offsetx"
+                             OffsetY="offsety"
+                             InitCropWidth="initw"
+                             InitCropHeight="inith"
+                             PureCSharpProcessing="purecs"
+                             IsCropLocked="isCropLocked"
+                             IsImageLocked="isImageLocked"
+                             Quality="quality"
+                             OnSizeChanged="t=>{
+                        width = t.Item1;
+                        height = t.Item2;
+                    }"></Cropper>
+                }
+            </section>
+            <footer class="modal-card-foot">
+                <div>
+                    <button class="button is-success" @onclick="DoneCrop">Done</button>
+                    <button class="button is-success" @onclick="SaveState">SaveState</button>
+                    <button class="button is-success" @onclick="RestoreState">RestoreState</button>
+                    <br />
+                    @if (cropper != null)
+                    {
+                        <div>
+                            width: @width |
+                            height: @height
+                        </div>
+                    }
+                    <div> IsCropLocked:<input type="checkbox" @bind="isCropLocked" /></div>
+                    <div>IsImageLocked:<input type="checkbox" @bind="isImageLocked" /></div>
+                    @if (cropper != null)
+                    {
+                        <input type="range" min="@(cropper.MinRatio*100)" max="@(200)" value="@(ratio*100)"
+                               @oninput="OnRatioChange" />
+                    }
+                </div>
+            </footer>
+        </div>
+    </div>
+}
+else
+{
+    offsetx = 0;
+    offsety = 0;
+    initw = 50;
+    inith = 50;
+}
+
+<br />
+
+<select @bind-value="enableProportion" @bind-value:event="onchange" class="select is-rounded">
+    <option value="true">Enable proportion</option>
+    <option value="false">Disable proportion</option>
+</select>
+
+@if (bool.Parse(enableProportion))
+{
+    <input type="number" @bind-value="proportion" placeholder="Proportion" class="input" />
+}
+
+<br />
+
+<label class="label">Quality (only works for .jpg)</label>
+<input type="range" min="1" max="100" @bind-value="quality" class="slider is-fullwidth" />
+
+<br />
+
+@* <label class="checkbox">Pure C# processing:
+    <input type="checkbox" @bind="purecs" />
+</label> *@
+
+@code {
+    Cropper cropper;
+    IBrowserFile file;
+    double width;
+    double height;
+    string webimgurl = "";
+    bool purecs = false;
+    bool show = true;
+    string prompt = "Image cropped! Parsing to base64...";
+    bool parsing = false;
+    string enableProportion = "false";
+    double proportion = 1d;
+    double ratio = 1;
+    bool isCropLocked = false;
+    bool isImageLocked = false;
+    int offsetx, offsety;
+    int initw = 50;
+    int inith = 50;
+    int quality = 100;
+    CropInfo state;
+    string notificationMessage;
+    HttpClient client = new HttpClient();
+    void OnRatioChange(ChangeEventArgs args)
+    {
+        ratio = int.Parse(args.Value.ToString()) / 100.0;
+    }
+    void SaveState()
+    {
+        state = cropper.GetCropInfo();
+    }
+    async Task RestoreState()
+    {
+        if (state != null)
+        {
+            (offsetx, offsety, initw, inith, ratio) = state.GetInitParams();
+            show = false;
+            StateHasChanged();
+            await Task.Delay(10);
+            show = true;
+        }
+    }
+
+    async Task FetchImage()
+    {
+        var stream = await client.GetStreamAsync(webimgurl);
+        file = new StreamFile(stream);
+    }
+
+    protected override void OnInitialized()
+    {
+
+        base.OnInitialized();
+    }
+
+    async Task OnInputFileChange(InputFileChangeEventArgs args)
+    {
+        await JSRuntime.InvokeVoidAsync("console.log", DateTime.Now.ToString());
+        file = args.File;
+    }
+    async Task DoneCrop()
+    {
+        var args = await cropper.GetCropedResult();
+        file = null;
+        parsing = true;
+        base.StateHasChanged();
+        await Task.Delay(10);// a hack, otherwise prompt won't show
+        await JSRuntime.InvokeVoidAsync("console.log", "converted!");
+        var bs = await args.GetDataAsync();
+        await JSRuntime.SetImageAsync(bs, "my-img", args.Format.DefaultMimeType);
+        parsing = false;
+    }
+
+    async Task SaveImageToService()
+    {
+        var imageUrl = await JSRuntime.InvokeAsync<string>("getImageSrc", new[] { "my-img" });
+        if (string.IsNullOrEmpty(imageUrl))
+        {
+            notificationMessage = "No image available to save.";
+            return;
+        }
+
+        try
+        {
+            var base64Image = await JSRuntime.InvokeAsync<string>("blobToBase64", imageUrl);
+            if (string.IsNullOrEmpty(base64Image))
+            {
+                notificationMessage = "Failed to convert image to Base64.";
+                return;
+            }
+
+            var response = await ImagesService.UploadImageAsync(base64Image);
+            if (response.Content != null)
+            {
+                notificationMessage = "Image saved successfully!";
+
+                await Task.Delay(2000); 
+                NavigationManager.NavigateTo("/");
+            }
+            else
+            {
+                notificationMessage = $"Failed to save image. Error: {response.ErrorMessage.Message}";
+            }
+        }
+        catch (Exception ex)
+        {
+            notificationMessage = $"Error during image processing: {ex.Message}";
+        }
+    }
+}
+<style>
+    @@import url("https://fastly.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css");
+</style>
+
+
+<style>
+    .modal-card-body, .modal-card-foot {
+        background-color: #f5f5f5; 
+    }
+    .modal-card-head {
+        background-color: #dbdbdb; 
+    }
+    .image.is-4by3 img {
+        object-fit: cover; 
+    }
+    .control.is-expanded {
+        flex-grow: 1;
+    }
+    .button.is-info, .button.is-success {
+        width: auto;
+        margin-top: 10px;
+    }
+    .input, .select {
+        margin-bottom: 10px;
+    }
+    .slider {
+        margin-top: 5px;
+    }
+
+
+
+.title, .subtitle {
+    color: #0D47A1;
+    padding: 8px 0;
+}
+
+.title {
+    font-size: 24px;
+    border-bottom: 2px solid #0D47A1;
+}
+
+.subtitle {
+    font-size: 18px;
+    margin-top: 10px;
+}
+
+/* File input styling */
+.input {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 2px solid #0D47A1;
+    border-radius: 4px;
+    transition: border-color .3s;
+}
+
+.input:hover {
+    border-color: #1565C0;
+}
+
+/* Button styling */
+.button {
+    background-color: #0D47A1;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color .3s;
+}
+
+.button:hover {
+    background-color: #1565C0;
+}
+
+/* Crop result and modal styling */
+.box, .modal-card {
+    text-align: center;
+    padding: 20px;
+    margin-top: 20px;
+    max-width: 60%;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.modal-card-head {
+    background-color: #0D47A1;
+    color: white;
+    padding: 10px;
+}
+
+.modal-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-card {
+    width: 90%;
+    max-width: 600px;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Slider and select styling */
+.slider, .select {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.select {
+    border: 2px solid #0D47A1;
+    background: white;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+
+.notification {
+    color: white;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    font-size: 16px;
+    text-align: center;
+}
+
+.is-success {
+    background-color: #48C774; /* Green for success messages */
+}
+
+.is-error {
+    background-color: #F14668; /* Red for error messages */
+}
+
+
+
+</style>

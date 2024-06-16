@@ -3,6 +3,86 @@
   "Transform": "AWS::Serverless-2016-10-31",
   "Description": "An AWS Serverless Application. This template is partially managed by Amazon.Lambda.Annotations (v1.4.0.0).",
   "Resources": {
+    "ImageS3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": "cataloguify-images"
+      }
+    },
+    "HttpApi": {
+      "Type": "AWS::ApiGatewayV2::Api",
+      "Properties": {
+        "Name": "CataloguifyApi",
+        "ProtocolType": "HTTP",
+        "CorsConfiguration": {
+          "AllowOrigins": [
+            "*"
+          ],
+          "AllowMethods": [
+            "GET",
+            "POST",
+            "DELETE",
+            "OPTIONS"
+          ],
+          "AllowHeaders": [
+            "Content-Type",
+            "Authorization"
+          ],
+          "MaxAge": 600
+        }
+      }
+    },
+    "HttpApiDeployment": {
+      "Type": "AWS::ApiGatewayV2::Deployment",
+      "DependsOn": [
+        "GetRoute",
+        "GenerateTokenRoute",
+        "SignUpRoute",
+        "UploadImageRoute",
+        "GetImagesRoute",
+        "DeleteImageRoute"
+      ],
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        }
+      }
+    },
+    "HttpApiStage": {
+      "Type": "AWS::ApiGatewayV2::Stage",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "DeploymentId": {
+          "Ref": "HttpApiDeployment"
+        },
+        "StageName": "prod",
+        "AutoDeploy": true
+      }
+    },
+    "HttpApiAuthorizer": {
+      "Type": "AWS::ApiGatewayV2::Authorizer",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "AuthorizerType": "REQUEST",
+        "AuthorizerCredentialsArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/LabRole"
+        },
+        "Name": "LambdaAuthorizer",
+        "AuthorizerUri": {
+          "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CataloguifyFunctionsValidateTokenAsyncGenerated.Arn}/invocations"
+        },
+        "IdentitySource": [
+          "$request.header.Authorization"
+        ],
+        "AuthorizerPayloadFormatVersion": "2.0",
+        "EnableSimpleResponses": false,
+        "AuthorizerResultTtlInSeconds": 0
+      }
+    },
     "CataloguifyFunctionsGetGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
@@ -29,10 +109,38 @@
           "RootGet": {
             "Type": "HttpApi",
             "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
               "Path": "/",
               "Method": "GET"
             }
           }
+        }
+      }
+    },
+    "GetIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CataloguifyFunctionsGetGenerated.Arn}/invocations"
+        },
+        "PayloadFormatVersion": "2.0"
+      }
+    },
+    "GetRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "RouteKey": "GET /",
+        "Target": {
+          "Fn::Sub": "integrations/${GetIntegration}"
         }
       }
     },
@@ -62,10 +170,38 @@
           "RootPost": {
             "Type": "HttpApi",
             "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
               "Path": "/generate-token",
               "Method": "POST"
             }
           }
+        }
+      }
+    },
+    "GenerateTokenIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CataloguifyFunctionsGenerateTokenAsyncGenerated.Arn}/invocations"
+        },
+        "PayloadFormatVersion": "2.0"
+      }
+    },
+    "GenerateTokenRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "RouteKey": "POST /generate-token",
+        "Target": {
+          "Fn::Sub": "integrations/${GenerateTokenIntegration}"
         }
       }
     },
@@ -91,25 +227,77 @@
       "Type": "AWS::DynamoDB::Table",
       "Properties": {
         "TableName": "users",
+        "BillingMode": "PAY_PER_REQUEST",
         "AttributeDefinitions": [
           {
-            "AttributeName": "email",
+            "AttributeName": "UserId",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "Email",
             "AttributeType": "S"
           }
         ],
         "KeySchema": [
           {
-            "AttributeName": "email",
+            "AttributeName": "UserId",
             "KeyType": "HASH"
           }
         ],
-        "ProvisionedThroughput": {
-          "ReadCapacityUnits": 5,
-          "WriteCapacityUnits": 5
-        }
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "EmailIndex",
+            "KeySchema": [
+              {
+                "AttributeName": "Email",
+                "KeyType": "HASH"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          }
+        ]
       }
     },
-    "CataloguifyFunctionsFunctionHandlerGenerated": {
+    "ImageInfoTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": "imageinfos",
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "ImageKey",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "UserId",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "ImageKey",
+            "KeyType": "HASH"
+          }
+        ],
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "UserIndex",
+            "KeySchema": [
+              {
+                "AttributeName": "UserId",
+                "KeyType": "HASH"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            }
+          }
+        ]
+      }
+    },
+    "CataloguifyFunctionsSignUpAsyncGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
         "Tool": "Amazon.Lambda.Annotations",
@@ -120,22 +308,232 @@
       "Properties": {
         "Runtime": "dotnet8",
         "CodeUri": ".",
-        "Role": "arn:aws:iam::885422015476:role/LabRole",
         "MemorySize": 512,
         "Timeout": 30,
         "Policies": [
-          "LabRole"
+          "AWSLambdaBasicExecutionRole"
         ],
         "PackageType": "Zip",
-        "Handler": "Cataloguify::Cataloguify.Functions_FunctionHandler_Generated::FunctionHandler",
+        "Handler": "Cataloguify::Cataloguify.Functions_SignUpAsync_Generated::SignUpAsync",
         "Events": {
           "RootPost": {
             "Type": "HttpApi",
             "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "Path": "/sign-up",
+              "Method": "POST"
+            }
+          }
+        }
+      }
+    },
+    "SignUpIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CataloguifyFunctionsSignUpAsyncGenerated.Arn}/invocations"
+        },
+        "PayloadFormatVersion": "2.0"
+      }
+    },
+    "SignUpRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "RouteKey": "POST /sign-up",
+        "Target": {
+          "Fn::Sub": "integrations/${SignUpIntegration}"
+        }
+      }
+    },
+    "CataloguifyFunctionsUploadImageGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations",
+        "SyncedEvents": [
+          "RootPost"
+        ]
+      },
+      "Properties": {
+        "Runtime": "dotnet8",
+        "CodeUri": ".",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Zip",
+        "Handler": "Cataloguify::Cataloguify.Functions_UploadImage_Generated::UploadImage",
+        "Events": {
+          "RootPost": {
+            "Type": "HttpApi",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
               "Path": "/upload-image",
               "Method": "POST"
             }
           }
+        }
+      }
+    },
+    "UploadImageIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CataloguifyFunctionsUploadImageGenerated.Arn}/invocations"
+        },
+        "PayloadFormatVersion": "2.0"
+      }
+    },
+    "UploadImageRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "RouteKey": "POST /upload-image",
+        "Target": {
+          "Fn::Sub": "integrations/${UploadImageIntegration}"
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAuthorizer"
+        }
+      }
+    },
+    "CataloguifyFunctionsGetImagesGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations",
+        "SyncedEvents": [
+          "RootPost"
+        ]
+      },
+      "Properties": {
+        "Runtime": "dotnet8",
+        "CodeUri": ".",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Zip",
+        "Handler": "Cataloguify::Cataloguify.Functions_GetImages_Generated::GetImages",
+        "Events": {
+          "RootPost": {
+            "Type": "HttpApi",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "Path": "/images",
+              "Method": "POST"
+            }
+          }
+        }
+      }
+    },
+    "GetImagesIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CataloguifyFunctionsGetImagesGenerated.Arn}/invocations"
+        },
+        "PayloadFormatVersion": "2.0"
+      }
+    },
+    "GetImagesRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "RouteKey": "POST /images",
+        "Target": {
+          "Fn::Sub": "integrations/${GetImagesIntegration}"
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAuthorizer"
+        }
+      }
+    },
+    "CataloguifyFunctionsDeleteImageGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations",
+        "SyncedEvents": [
+          "RootDelete"
+        ]
+      },
+      "Properties": {
+        "Runtime": "dotnet8",
+        "CodeUri": ".",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Zip",
+        "Handler": "Cataloguify::Cataloguify.Functions_DeleteImage_Generated::DeleteImage",
+        "Events": {
+          "RootDelete": {
+            "Type": "HttpApi",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "Path": "/images",
+              "Method": "DELETE"
+            }
+          }
+        }
+      }
+    },
+    "DeleteImageIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CataloguifyFunctionsDeleteImageGenerated.Arn}/invocations"
+        },
+        "PayloadFormatVersion": "2.0"
+      }
+    },
+    "DeleteImageRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "RouteKey": "DELETE /images",
+        "Target": {
+          "Fn::Sub": "integrations/${DeleteImageIntegration}"
+        },
+        "AuthorizationType": "CUSTOM",
+        "AuthorizerId": {
+          "Ref": "HttpApiAuthorizer"
         }
       }
     }
@@ -144,7 +542,7 @@
     "ApiURL": {
       "Description": "API endpoint URL for Prod environment",
       "Value": {
-        "Fn::Sub": "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+        "Fn::Sub": "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/prod/"
       }
     }
   }

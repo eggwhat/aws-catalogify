@@ -1,0 +1,63 @@
+﻿@using Blazored.LocalStorage
+@using Cataloguify.Client.Areas.Identity
+@using MudBlazor
+@inject IIdentityService IdentityService
+@inject ILocalStorageService LocalStorage;
+@inherits LayoutComponentBase
+
+<div class="page">
+    @if (_isUserAuthenticated)
+    {
+        <div class="sidebar">
+            <NavMenu/>
+        </div>   
+    }
+
+    <main>
+        <div class="top-row px-4">
+            @if (_isUserAuthenticated)
+            {
+                <div class="nav-link" style="color: black">Hello, @_username!</div>
+            }
+            <NavLink class="nav-link" href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</NavLink>
+            @if (!_isUserAuthenticated)
+            {
+                <NavLink class="nav-link" href="signin">Sign In</NavLink>
+                <NavLink class="nav-link" href="signup">Sign Up</NavLink>
+            }
+            else
+            {
+                <NavLink class="nav-link" href="" @onclick="@IdentityService.Logout">Sign Out</NavLink>
+            }
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+
+        <MudThemeProvider/>
+    </main>
+
+  
+</div>
+<AppFooter/>
+<RadzenDialog />
+
+@code {
+
+    private bool _isUserAuthenticated;
+    private string _username;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            var isAuthenticated = await LocalStorage.GetItemAsStringAsync("IsAuthenticated");
+            if (isAuthenticated != null)
+            {
+                _isUserAuthenticated = bool.Parse(isAuthenticated);
+            }
+            _username = await LocalStorage.GetItemAsStringAsync("Username");
+            StateHasChanged();
+        }
+    }
+
+}
