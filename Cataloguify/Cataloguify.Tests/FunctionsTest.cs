@@ -43,7 +43,7 @@ public class FunctionTest
         _mockDynamoDBHelper = new Mock<IDynamoDBHelper>();
         _testLogger = new TestLambdaLogger();
         _mockContext.Setup(x => x.Logger).Returns(_testLogger);
-        _functions = new Functions(_mockS3Client.Object, _mockRekognition.Object, _mockDynamoDB.Object, 
+        _functions = Functions.MockFunctions(_mockS3Client.Object, _mockRekognition.Object, _mockDynamoDB.Object, 
             _mockDynamoDBContext.Object, _mockDynamoDBHelper.Object);
     }
 

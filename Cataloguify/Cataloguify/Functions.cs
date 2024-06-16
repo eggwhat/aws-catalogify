@@ -32,8 +32,9 @@ namespace Cataloguify;
 
 public class Functions
 {
-    private const string S3_BUCKET_NAME = "cataloguify-bucket";
+    private const string S3_BUCKET_NAME = "cataloguify-images";
     public const float DEFAULT_MIN_CONFIDENCE = 70f;
+
 
     /// <summary>
     /// The name of the environment variable to set which will override the default minimum confidence level.
@@ -51,11 +52,18 @@ public class Functions
     /// <summary>
     /// Default constructor that Lambda will invoke.
     /// </summary>
-    public Functions() : this(new AmazonS3Client(), new AmazonRekognitionClient(), new AmazonDynamoDBClient(), null, null)
+    /// 
+
+    public Functions()
     {
+        this.S3Client = new AmazonS3Client();
+        this.RekognitionClient = new AmazonRekognitionClient();
+        this.AmazonDynamoDBClient = new AmazonDynamoDBClient();
+        this.DynamoDBContext = new DynamoDBContext(AmazonDynamoDBClient);
+        this.DynamoDBHelper = new DynamoDBHelper(this.AmazonDynamoDBClient);
     }
 
-    internal Functions(IAmazonS3 s3Client, IAmazonRekognition rekognitionClient, IAmazonDynamoDB amazonDynamoDBClient, IDynamoDBContext dynamoDBContext, IDynamoDBHelper dynamoDBHelper)
+    private Functions(IAmazonS3 s3Client, IAmazonRekognition rekognitionClient, IAmazonDynamoDB amazonDynamoDBClient, IDynamoDBContext dynamoDBContext, IDynamoDBHelper dynamoDBHelper)
     {
         S3Client = s3Client;
         RekognitionClient = rekognitionClient;
@@ -63,6 +71,10 @@ public class Functions
         DynamoDBContext = dynamoDBContext ?? new DynamoDBContext(amazonDynamoDBClient);
         DynamoDBHelper = dynamoDBHelper ?? new DynamoDBHelper(amazonDynamoDBClient);
     }
+
+    public static Functions MockFunctions(IAmazonS3 s3Client, IAmazonRekognition rekognitionClient,
+        IAmazonDynamoDB amazonDynamoDBClient, IDynamoDBContext dynamoDBContext,
+        IDynamoDBHelper dynamoDBHelper) => new Functions(s3Client, rekognitionClient, amazonDynamoDBClient, dynamoDBContext, dynamoDBHelper);
 
 
     /// <summary>
@@ -225,7 +237,7 @@ public class Functions
                 new APIGatewayCustomAuthorizerPolicy.IAMPolicyStatement()
                 {
                     Effect = effect,
-                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:9tty1ch09d/*/*" },
+                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:mn7sujys1h/*/*" },
                     Action = new HashSet<string> { "execute-api:Invoke" }
                 }
             }

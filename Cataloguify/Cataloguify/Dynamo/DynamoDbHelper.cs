@@ -12,8 +12,8 @@ namespace Cataloguify.Dynamo;
 
 public class DynamoDBHelper: IDynamoDBHelper
 {
-    private readonly string _userTableName = "Users";
-    private readonly string _imageInfoTableName = "Imageinfos";
+    private readonly string _userTableName = "users";
+    private readonly string _imageInfoTableName = "imageinfos";
     private readonly string _emailIndex = "EmailIndex";
     private readonly string _userIdIndex = "UserIndex";
     private readonly IAmazonDynamoDB amazonDynamoDBClient;

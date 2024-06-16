@@ -3,6 +3,12 @@
   "Transform": "AWS::Serverless-2016-10-31",
   "Description": "An AWS Serverless Application. This template is partially managed by Amazon.Lambda.Annotations (v1.4.0.0).",
   "Resources": {
+    "ImageS3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": "cataloguify-images"
+      }
+    },
     "HttpApi": {
       "Type": "AWS::ApiGatewayV2::Api",
       "Properties": {
@@ -220,7 +226,7 @@
     "UserTable": {
       "Type": "AWS::DynamoDB::Table",
       "Properties": {
-        "TableName": "Users",
+        "TableName": "users",
         "BillingMode": "PAY_PER_REQUEST",
         "AttributeDefinitions": [
           {
@@ -257,7 +263,7 @@
     "ImageInfoTable": {
       "Type": "AWS::DynamoDB::Table",
       "Properties": {
-        "TableName": "Imageinfos",
+        "TableName": "imageinfos",
         "BillingMode": "PAY_PER_REQUEST",
         "AttributeDefinitions": [
           {
