@@ -1,9 +1,14 @@
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    height: 100%;
 }
 
 h1:focus {
     outline: none;
+}
+
+main {
+    min-height: 80vh;
 }
 
 a, .btn-link {
@@ -100,4 +105,15 @@ a, .btn-link {
 
 code {
     color: #c02d76;
+}
+
+
+
+.footer {
+    background-color: #343a40; /* Dark background for the footer */
+    color: white; /* White text color */
+    text-align: center;
+    padding: 20px 0;
+    bottom: 0;
+    margin-top: auto; /* This ensures it sticks at the bottom */
 }
