@@ -2,10 +2,13 @@
 @using Cataloguify.Client.Areas.Images
 @inject IImagesService ImagesService
 @inject IJSRuntime JSRuntime;
+@inject NavigationManager NavigationManager
 
 <h1 class="title">Cropper</h1>
 <h2 class="subtitle">Load from file</h2>
-<InputFile OnChange="OnInputFileChange" class="input" accept=".jpg,.jpeg,.png"></InputFile>
+<InputFile OnChange="OnInputFileChange" class="input-file" accept=".jpg,.jpeg,.png"></InputFile>
+   
+
 
 @* <h2 class="subtitle">II. Load from URL</h2>
 <div class="field has-addons">
@@ -22,6 +25,13 @@
 {
     <div class="notification is-primary is-light has-text-centered">
         <h2>@prompt</h2>
+    </div>
+}
+
+@if (notificationMessage != null)
+{
+    <div class="notification is-success">
+        @notificationMessage
     </div>
 }
 
@@ -140,6 +150,7 @@ else
     int inith = 50;
     int quality = 100;
     CropInfo state;
+    string notificationMessage;
     HttpClient client = new HttpClient();
     void OnRatioChange(ChangeEventArgs args)
     {
@@ -191,12 +202,12 @@ else
         parsing = false;
     }
 
-     async Task SaveImageToService()
+    async Task SaveImageToService()
     {
         var imageUrl = await JSRuntime.InvokeAsync<string>("getImageSrc", new[] { "my-img" });
         if (string.IsNullOrEmpty(imageUrl))
         {
-            Console.WriteLine("No image available to save.");
+            notificationMessage = "No image available to save.";
             return;
         }
 
@@ -205,20 +216,26 @@ else
             var base64Image = await JSRuntime.InvokeAsync<string>("blobToBase64", imageUrl);
             if (string.IsNullOrEmpty(base64Image))
             {
-                Console.WriteLine("Failed to convert image to Base64.");
+                notificationMessage = "Failed to convert image to Base64.";
                 return;
             }
 
-            Console.WriteLine("Sending Base64 image to service.");
             var response = await ImagesService.UploadImageAsync(base64Image);
             if (response.Content != null)
-                Console.WriteLine("Image saved successfully!");
+            {
+                notificationMessage = "Image saved successfully!";
+
+                await Task.Delay(2000); 
+                NavigationManager.NavigateTo("/");
+            }
             else
-                Console.WriteLine($"Failed to save image. Error: {response.ErrorMessage.Message}");
+            {
+                notificationMessage = $"Failed to save image. Error: {response.ErrorMessage.Message}";
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error during image processing: {ex.Message}");
+            notificationMessage = $"Error during image processing: {ex.Message}";
         }
     }
 }
@@ -303,6 +320,7 @@ else
     text-align: center;
     padding: 20px;
     margin-top: 20px;
+    max-width: 60%;
     background: #fff;
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -346,5 +364,25 @@ else
     padding: 10px;
     border-radius: 4px;
 }
+
+
+.notification {
+    color: white;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    font-size: 16px;
+    text-align: center;
+}
+
+.is-success {
+    background-color: #48C774; /* Green for success messages */
+}
+
+.is-error {
+    background-color: #F14668; /* Red for error messages */
+}
+
+
 
 </style>
