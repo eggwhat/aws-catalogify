@@ -26,7 +26,6 @@ using System.Runtime.CompilerServices;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
-[assembly: InternalsVisibleTo("Cataloguify.Tests")]
 
 namespace Cataloguify;
 
@@ -63,7 +62,8 @@ public class Functions
         this.DynamoDBHelper = new DynamoDBHelper(this.AmazonDynamoDBClient);
     }
 
-    private Functions(IAmazonS3 s3Client, IAmazonRekognition rekognitionClient, IAmazonDynamoDB amazonDynamoDBClient, IDynamoDBContext dynamoDBContext, IDynamoDBHelper dynamoDBHelper)
+    private Functions(IAmazonS3 s3Client, IAmazonRekognition rekognitionClient, IAmazonDynamoDB amazonDynamoDBClient,
+        IDynamoDBContext dynamoDBContext, IDynamoDBHelper dynamoDBHelper)
     {
         S3Client = s3Client;
         RekognitionClient = rekognitionClient;
@@ -316,16 +316,13 @@ public class Functions
 
             // Upload the image to S3
             var s3Key = Guid.NewGuid(); // Generate a unique key for the S3 object
-            using (var s3Client = S3Client)
+            PutObjectRequest s3Request = new PutObjectRequest
             {
-                PutObjectRequest s3Request = new PutObjectRequest
-                {
-                    BucketName = S3_BUCKET_NAME,
-                    Key = s3Key.ToString(),
-                    InputStream = new MemoryStream(imageBytes)
-                };
-                PutObjectResponse s3Response = await s3Client.PutObjectAsync(s3Request);
-            }
+                BucketName = S3_BUCKET_NAME,
+                Key = s3Key.ToString(),
+                InputStream = new MemoryStream(imageBytes)
+            };
+            PutObjectResponse s3Response = await S3Client.PutObjectAsync(s3Request);
 
             var imageInfo = new ImageInfo
             {
