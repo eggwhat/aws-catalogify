@@ -257,7 +257,10 @@
               "ProjectionType": "ALL"
             }
           }
-        ]
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        }
       }
     },
     "ImageInfoTable": {
@@ -294,7 +297,10 @@
               "ProjectionType": "ALL"
             }
           }
-        ]
+        ],
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        }
       }
     },
     "CataloguifyFunctionsSignUpAsyncGenerated": {
