@@ -4,7 +4,7 @@
 @inject IJSRuntime JSRuntime;
 
 <h1 class="title">Cropper</h1>
-<h2 class="subtitle">I. Load from file</h2>
+<h2 class="subtitle">Load from file</h2>
 <InputFile OnChange="OnInputFileChange" class="input" accept=".jpg,.jpeg,.png"></InputFile>
 
 @* <h2 class="subtitle">II. Load from URL</h2>
@@ -250,4 +250,101 @@ else
     .slider {
         margin-top: 5px;
     }
+
+
+
+.title, .subtitle {
+    color: #0D47A1;
+    padding: 8px 0;
+}
+
+.title {
+    font-size: 24px;
+    border-bottom: 2px solid #0D47A1;
+}
+
+.subtitle {
+    font-size: 18px;
+    margin-top: 10px;
+}
+
+/* File input styling */
+.input {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 2px solid #0D47A1;
+    border-radius: 4px;
+    transition: border-color .3s;
+}
+
+.input:hover {
+    border-color: #1565C0;
+}
+
+/* Button styling */
+.button {
+    background-color: #0D47A1;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color .3s;
+}
+
+.button:hover {
+    background-color: #1565C0;
+}
+
+/* Crop result and modal styling */
+.box, .modal-card {
+    text-align: center;
+    padding: 20px;
+    margin-top: 20px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.modal-card-head {
+    background-color: #0D47A1;
+    color: white;
+    padding: 10px;
+}
+
+.modal-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-card {
+    width: 90%;
+    max-width: 600px;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Slider and select styling */
+.slider, .select {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.select {
+    border: 2px solid #0D47A1;
+    background: white;
+    padding: 10px;
+    border-radius: 4px;
+}
+
 </style>
