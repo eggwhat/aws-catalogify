@@ -33,11 +33,6 @@ public class Functions
 {
     private const string S3_BUCKET_NAME = "cataloguify-images";
     public const float DEFAULT_MIN_CONFIDENCE = 70f;
-
-
-    /// <summary>
-    /// The name of the environment variable to set which will override the default minimum confidence level.
-    /// </summary>
     public const string MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME = "MinConfidence";
 
     IAmazonS3 S3Client { get; }
@@ -328,7 +323,7 @@ public class Functions
             {
                 ImageKey = s3Key,
                 UserId = new Guid(userId),
-                Tags = detectLabelsResponse.Labels.Select(x => x.Name).ToList(),
+                Tags = detectLabelsResponse.Labels.Any() ? detectLabelsResponse.Labels.Select(x => x.Name).ToList() : new List<string>(),
                 UploadedAt = DateTime.UtcNow,
             };
             await DynamoDBContext.SaveAsync(imageInfo);
