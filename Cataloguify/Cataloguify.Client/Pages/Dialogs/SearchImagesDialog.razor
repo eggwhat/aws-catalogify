@@ -98,7 +98,16 @@
 
     private void AddNewTag()
     {
-        newTagValue = char.ToUpper(newTagValue[0]) + newTagValue[1..].ToLower();
+        var tagElements = newTagValue.Trim().Split(' ');
+        for (var i = 0; i < tagElements.Length; ++i)
+        {
+            if (tagElements[i].Length > 0)
+            {
+                tagElements[i] = char.ToUpper(tagElements[i][0]) + tagElements[i][1..].ToLower();
+            }
+        }
+
+        newTagValue = string.Join(' ', tagElements);
 
         var list = TempSearchImagesModel.Tags.ToHashSet();
         list.Add(newTagValue);

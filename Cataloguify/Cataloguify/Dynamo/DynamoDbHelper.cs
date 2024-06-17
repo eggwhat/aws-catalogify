@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Cataloguify.Dynamo;
 
-public class DynamoDBHelper
+public class DynamoDBHelper: IDynamoDBHelper
 {
     private readonly string _userTableName = "users";
     private readonly string _imageInfoTableName = "imageinfos";

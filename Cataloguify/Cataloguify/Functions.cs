@@ -22,6 +22,7 @@ using Cataloguify.Dynamo;
 using Amazon.Auth.AccessControlPolicy;
 using System.Text.Json;
 using Cataloguify.Entities;
+using System.Runtime.CompilerServices;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -30,8 +31,9 @@ namespace Cataloguify;
 
 public class Functions
 {
-    private const string S3_BUCKET_NAME = "cataloguify-bucket";
+    private const string S3_BUCKET_NAME = "cataloguify-images";
     public const float DEFAULT_MIN_CONFIDENCE = 70f;
+
 
     /// <summary>
     /// The name of the environment variable to set which will override the default minimum confidence level.
@@ -42,15 +44,15 @@ public class Functions
     IAmazonRekognition RekognitionClient { get; }
     IAmazonDynamoDB AmazonDynamoDBClient { get; }
     IDynamoDBContext DynamoDBContext { get; }
-    DynamoDBHelper DynamoDBHelper { get; }
+    IDynamoDBHelper DynamoDBHelper { get; }
 
     float MinConfidence { get; set; } = DEFAULT_MIN_CONFIDENCE;
-
-    HashSet<string> SupportedImageTypes { get; } = new HashSet<string> { ".png", ".jpg", ".jpeg" };
 
     /// <summary>
     /// Default constructor that Lambda will invoke.
     /// </summary>
+    /// 
+
     public Functions()
     {
         this.S3Client = new AmazonS3Client();
@@ -58,8 +60,21 @@ public class Functions
         this.AmazonDynamoDBClient = new AmazonDynamoDBClient();
         this.DynamoDBContext = new DynamoDBContext(AmazonDynamoDBClient);
         this.DynamoDBHelper = new DynamoDBHelper(this.AmazonDynamoDBClient);
-        Environment.SetEnvironmentVariable("LAMBDA_NET_SERIALIZER_DEBUG", "true");
     }
+
+    private Functions(IAmazonS3 s3Client, IAmazonRekognition rekognitionClient, IAmazonDynamoDB amazonDynamoDBClient,
+        IDynamoDBContext dynamoDBContext, IDynamoDBHelper dynamoDBHelper)
+    {
+        S3Client = s3Client;
+        RekognitionClient = rekognitionClient;
+        AmazonDynamoDBClient = amazonDynamoDBClient;
+        DynamoDBContext = dynamoDBContext ?? new DynamoDBContext(amazonDynamoDBClient);
+        DynamoDBHelper = dynamoDBHelper ?? new DynamoDBHelper(amazonDynamoDBClient);
+    }
+
+    public static Functions MockFunctions(IAmazonS3 s3Client, IAmazonRekognition rekognitionClient,
+        IAmazonDynamoDB amazonDynamoDBClient, IDynamoDBContext dynamoDBContext,
+        IDynamoDBHelper dynamoDBHelper) => new Functions(s3Client, rekognitionClient, amazonDynamoDBClient, dynamoDBContext, dynamoDBHelper);
 
 
     /// <summary>
@@ -222,15 +237,15 @@ public class Functions
                 new APIGatewayCustomAuthorizerPolicy.IAMPolicyStatement()
                 {
                     Effect = effect,
-                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:m6d1s7fhgk/*/*" },
+                    Resource = new HashSet<string> { "arn:aws:execute-api:us-east-1:885422015476:mn7sujys1h/*/*" },
                     Action = new HashSet<string> { "execute-api:Invoke" }
                 }
             }
             }
         };
     }
-    
-    private ClaimsPrincipal GetClaimsPrincipal(string authToken)
+
+    internal ClaimsPrincipal GetClaimsPrincipal(string authToken)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var validationParams = new TokenValidationParameters()
@@ -254,6 +269,12 @@ public class Functions
     [HttpApi(LambdaHttpMethod.Post, "/upload-image")]
     public async Task<APIGatewayProxyResponse> UploadImage(APIGatewayHttpApiV2ProxyRequest request, ILambdaContext context)
     {
+        var response = new APIGatewayProxyResponse
+        {
+            Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" }, {"Access-Control-Allow-Origin", "*" },
+                { "Access-Control-Allow-Credentials", "true"} }
+        };
+    
         var environmentMinConfidence = System.Environment.GetEnvironmentVariable(MIN_CONFIDENCE_ENVIRONMENT_VARIABLE_NAME);
         if (!string.IsNullOrWhiteSpace(environmentMinConfidence))
         {
@@ -295,16 +316,13 @@ public class Functions
 
             // Upload the image to S3
             var s3Key = Guid.NewGuid(); // Generate a unique key for the S3 object
-            using (var s3Client = S3Client)
+            PutObjectRequest s3Request = new PutObjectRequest
             {
-                PutObjectRequest s3Request = new PutObjectRequest
-                {
-                    BucketName = S3_BUCKET_NAME,
-                    Key = s3Key.ToString(),
-                    InputStream = new MemoryStream(imageBytes)
-                };
-                PutObjectResponse s3Response = await s3Client.PutObjectAsync(s3Request);
-            }
+                BucketName = S3_BUCKET_NAME,
+                Key = s3Key.ToString(),
+                InputStream = new MemoryStream(imageBytes)
+            };
+            PutObjectResponse s3Response = await S3Client.PutObjectAsync(s3Request);
 
             var imageInfo = new ImageInfo
             {
@@ -316,23 +334,16 @@ public class Functions
             await DynamoDBContext.SaveAsync(imageInfo);
 
             // Return response
-            return new APIGatewayProxyResponse
-            {
-                StatusCode = 200,
-                Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" } }
-            };
+            response.StatusCode = 200;
         }
         catch (Exception ex)
         {
             // Handle any errors
             LambdaLogger.Log($"Error processing image: {ex.Message}");
-            return new APIGatewayProxyResponse
-            {
-                StatusCode = 500,
-                Body = "Error processing image",
-                Headers = new Dictionary<string, string> { { "Content-Type", "text/plain" } }
-            };
+            response.StatusCode = 500;
+            response.Body = "Error processing image";
         }
+        return response;
     }
 
     [LambdaFunction]
@@ -357,6 +368,7 @@ public class Functions
             }
             filterImages = searchImageRequest.SortOrder == "des" ? filterImages.OrderByDescending(x => x.UploadedAt).ThenBy(x => x.ImageKey)
                                                                  : filterImages.OrderBy(x => x.UploadedAt).ThenBy(x => x.ImageKey);
+            var totalPages = (int)Math.Ceiling((decimal)filterImages.Count() / searchImageRequest.Results);
             filterImages = filterImages.Skip((searchImageRequest.Page - 1) * searchImageRequest.Results).Take(searchImageRequest.Results);
 
 
@@ -369,7 +381,15 @@ public class Functions
                 UploadedAt = x.UploadedAt,
             });
 
-            response.Body = JsonConvert.SerializeObject(images);
+            var responseBody = new PagedResponse<IEnumerable<Entities.Image>>
+            {
+                Page = searchImageRequest.Page,
+                Results = images.Count(),
+                TotalPages = totalPages,
+                Content = images
+            };
+
+            response.Body = JsonConvert.SerializeObject(responseBody);
             response.StatusCode = 200;
         }
         catch (Exception ex)
@@ -417,8 +437,6 @@ public class Functions
             // Get user ID from authorizer context
             var authorizerContext = request.RequestContext.Authorizer;
             var userId = ((JsonElement)authorizerContext.Lambda["UserId"]).Deserialize<string>();
-            Console.WriteLine($"Requst 1: {request.RawQueryString}");
-            Console.WriteLine($"Requst 2: {request.QueryStringParameters}");
 
 
             // Check if the imageKey parameter exists and is not null or empty
@@ -438,7 +456,7 @@ public class Functions
             await S3Client.DeleteObjectAsync(deleteObjectRequest);
 
             // Delete the image record from DynamoDB
-            var imageInfo = await DynamoDBContext.LoadAsync<ImageInfo>(imageKey, new Guid(userId));
+            var imageInfo = await DynamoDBContext.LoadAsync<ImageInfo>(new Guid(imageKey), new Guid(userId));
             if (imageInfo != null)
             {
                 await DynamoDBContext.DeleteAsync(imageInfo);
