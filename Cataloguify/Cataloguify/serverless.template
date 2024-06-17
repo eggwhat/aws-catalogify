@@ -215,6 +215,17 @@
         }
       }
     },
+    "CataloguifyFunctionsGenerateTokenAsyncGeneratedVersion": {
+      "Type": "AWS::Lambda::Version",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "CataloguifyFunctionsGenerateTokenAsyncGenerated"
+        },
+        "ProvisionedConcurrencyConfig": {
+          "ProvisionedConcurrentExecutions": 5
+        }
+      }
+    },
     "GenerateTokenIntegration": {
       "Type": "AWS::ApiGatewayV2::Integration",
       "Properties": {
@@ -256,6 +267,17 @@
         ],
         "PackageType": "Zip",
         "Handler": "Cataloguify::Cataloguify.Functions_ValidateTokenAsync_Generated::ValidateTokenAsync"
+      }
+    },
+    "CataloguifyFunctionsValidateTokenGeneratedVersion": {
+      "Type": "AWS::Lambda::Version",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "CataloguifyFunctionsValidateTokenAsyncGenerated"
+        },
+        "ProvisionedConcurrencyConfig": {
+          "ProvisionedConcurrentExecutions": 5
+        }
       }
     },
     "UserTable": {
@@ -371,6 +393,17 @@
         }
       }
     },
+    "CataloguifyFunctionsSignUpAsyncGeneratedVersion": {
+      "Type": "AWS::Lambda::Version",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "CataloguifyFunctionsSignUpAsyncGenerated"
+        },
+        "ProvisionedConcurrencyConfig": {
+          "ProvisionedConcurrentExecutions": 5
+        }
+      }
+    },
     "SignUpIntegration": {
       "Type": "AWS::ApiGatewayV2::Integration",
       "Properties": {
@@ -426,6 +459,17 @@
               "Method": "POST"
             }
           }
+        }
+      }
+    },
+    "CataloguifyFunctionsUploadImageAsyncGeneratedVersion": {
+      "Type": "AWS::Lambda::Version",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "CataloguifyFunctionsUploadImageGenerated"
+        },
+        "ProvisionedConcurrencyConfig": {
+          "ProvisionedConcurrentExecutions": 5
         }
       }
     },
@@ -491,6 +535,17 @@
         }
       }
     },
+    "CataloguifyFunctionsGetImagesAsyncGeneratedVersion": {
+      "Type": "AWS::Lambda::Version",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "CataloguifyFunctionsGetImagesGenerated"
+        },
+        "ProvisionedConcurrencyConfig": {
+          "ProvisionedConcurrentExecutions": 5
+        }
+      }
+    },
     "GetImagesIntegration": {
       "Type": "AWS::ApiGatewayV2::Integration",
       "Properties": {
@@ -550,6 +605,17 @@
               "Method": "DELETE"
             }
           }
+        }
+      }
+    },
+    "CataloguifyFunctionsDeleteImageAsyncGeneratedVersion": {
+      "Type": "AWS::Lambda::Version",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "CataloguifyFunctionsDeleteImageGenerated"
+        },
+        "ProvisionedConcurrencyConfig": {
+          "ProvisionedConcurrentExecutions": 5
         }
       }
     },
