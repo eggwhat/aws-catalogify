@@ -72,6 +72,6 @@ public class IdentityService : IIdentityService
         await _localStorage.SetItemAsStringAsync("IsAuthenticated", IsAuthenticated.ToString());
 
         await _localStorage.RemoveItemAsync("searchImagesCriteria");
-        _navigationManager.NavigateTo("signin", forceLoad: true);
+        _navigationManager.NavigateTo("", forceLoad: true);
     }
 }
