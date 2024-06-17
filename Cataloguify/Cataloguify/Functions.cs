@@ -323,7 +323,7 @@ public class Functions
             {
                 ImageKey = s3Key,
                 UserId = new Guid(userId),
-                Tags = detectLabelsResponse.Labels.Select(x => x.Name).ToList(),
+                Tags = detectLabelsResponse.Labels.Any() ? detectLabelsResponse.Labels.Select(x => x.Name).ToList() : new List<string>(),
                 UploadedAt = DateTime.UtcNow,
             };
             await DynamoDBContext.SaveAsync(imageInfo);
